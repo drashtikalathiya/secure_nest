@@ -1,0 +1,27 @@
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import admin from '../../config/firebase-admin';
+
+@Injectable()
+export class FirebaseAuthGuard implements CanActivate {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const req = context.switchToHttp().getRequest();
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) throw new UnauthorizedException('No token');
+
+    const token = authHeader.replace('Bearer ', '');
+
+    try {
+      const decodedToken = await admin.auth().verifyIdToken(token);
+      req.user = decodedToken;
+      return true;
+    } catch (err) {
+      throw new UnauthorizedException('Invalid Firebase token');
+    }
+  }
+}
