@@ -1,6 +1,6 @@
 import { IconCheck } from "@tabler/icons-react";
 
-export default function PlanCard({ plan, selected, onSelect }) {
+export default function PlanCard({ plan, selected, onSelect, onSubscribe }) {
   return (
     <div
       onClick={onSelect}
@@ -46,6 +46,7 @@ export default function PlanCard({ plan, selected, onSelect }) {
       <button
         onClick={(e) => {
           e.stopPropagation();
+          onSubscribe(plan.price_id);
         }}
         className={`w-full h-11 mt-auto rounded-md font-semibold transition text-sm
           ${

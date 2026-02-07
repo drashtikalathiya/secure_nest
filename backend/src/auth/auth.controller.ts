@@ -1,4 +1,4 @@
-import { Controller, Post, Req, UseGuards, Body, Res } from '@nestjs/common';
+import { Controller, Post, Req, UseGuards, Body } from '@nestjs/common';
 import { FirebaseAuthGuard } from './firebase-auth.guard';
 import { AuthService } from './auth.service';
 import { sendSuccess, sendError } from '../utils/responseHandler';

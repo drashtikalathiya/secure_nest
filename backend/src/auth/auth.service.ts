@@ -49,7 +49,7 @@ export class AuthService {
       firebase_uid: uid,
       email,
       name: body?.name || null,
-      role: body?.role || 'member',
+      role: 'owner',
     });
 
     return this.userRepo.save(user);

@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { IconShieldCheck, IconClock } from "@tabler/icons-react";
 import PlanCard from "../components/PlanCard";
-
+import { createCheckoutSession } from "../lib/api";
+import { getAuth } from "firebase/auth";
 const PLANS = [
   {
     id: "small",
     title: "Small Nest",
+    price_id: "price_1Sxh5kCw3kMYCRHmpFs4zQ0u",
     price: "$9",
     description: "Perfect for couples or small families",
     features: [
@@ -18,6 +20,7 @@ const PLANS = [
   {
     id: "family",
     title: "Family Nest",
+    price_id: "price_1Sxh7CCw3kMYCRHm7y4plN5p",
     price: "$15",
     popular: true,
     description: "Best for secure family living",
@@ -31,6 +34,17 @@ const PLANS = [
     ],
   },
 ];
+
+const handleSubscribe = async (priceId) => {
+  try {
+    const token = await getAuth().currentUser.getIdToken();
+    const { url } = await createCheckoutSession(priceId, token);
+
+    window.location.href = url;
+  } catch (error) {
+    console.log("Error", error);
+  }
+};
 
 export default function Subscription() {
   const [selectedPlan, setSelectedPlan] = useState("family");
@@ -51,6 +65,7 @@ export default function Subscription() {
             plan={plan}
             selected={selectedPlan === plan.id}
             onSelect={() => setSelectedPlan(plan.id)}
+            onSubscribe={handleSubscribe}
           />
         ))}
       </div>

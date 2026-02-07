@@ -5,7 +5,6 @@ import {
   IconEye,
   IconEyeOff,
   IconLogin2,
-  IconCaretDownFilled,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
 import { firebaseSignup } from "../services/firebaseAuth";
@@ -20,7 +19,6 @@ export default function SignupForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [role, setRole] = useState("owner");
   const [error, setError] = useState({});
   const navigate = useNavigate();
 
@@ -45,7 +43,6 @@ export default function SignupForm() {
       const token = await user.getIdToken();
       await backendSignup(token, {
         name: fullName,
-        role,
       });
       toast.success("User registered successfully!");
       navigate("/login");
@@ -85,26 +82,6 @@ export default function SignupForm() {
           {error.fullName && (
             <p className="text-red-500 text-xs mt-1">{error.fullName}</p>
           )}
-        </div>
-
-        <div>
-          <label className="text-sm text-gray-400">Role</label>
-          <div className="relative mt-1">
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full h-11 px-4 rounded-md bg-[#121a28] border border-[#1f2a3a] text-gray-300 focus:ring-2 focus:ring-primary cursor-pointer appearance-none"
-            >
-              <option className="cursor-pointer" value="owner">
-                Owner
-              </option>
-              <option className="cursor-pointer" value="member">
-                Member
-              </option>
-            </select>
-
-            <IconCaretDownFilled className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          </div>
         </div>
 
         <div>

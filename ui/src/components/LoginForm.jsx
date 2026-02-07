@@ -34,14 +34,14 @@ export default function LoginForm() {
 
     try {
       const user = await firebaseLogin(email, password);
-      console.log("user", user);
 
       const token = await user.getIdToken();
 
       const data = await backendLogin(token);
+
       toast.success("User login successfully!");
 
-      navigate(data?.is_subscribed ? "/dashboard" : "/subscription");
+      navigate(data?.data.is_subscribed ? "/dashboard" : "/subscription");
     } catch (err) {
       handleLoginError(err);
     }

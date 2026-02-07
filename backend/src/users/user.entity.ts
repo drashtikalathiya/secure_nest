@@ -19,11 +19,14 @@ export class User {
   @Column({ nullable: true })
   name: string;
 
-  @Column({ default: 'member' })
+  @Column({ default: 'owner' })
   role: 'owner' | 'member';
 
   @Column({ default: false })
   is_subscribed: boolean;
+
+  @Column({ nullable: true })
+  subscribed_id: string;
 
   @CreateDateColumn()
   created_at: Date;
