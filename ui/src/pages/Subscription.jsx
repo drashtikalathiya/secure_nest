@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { IconShieldCheck, IconClock } from "@tabler/icons-react";
 import PlanCard from "../components/PlanCard";
-import { createCheckoutSession } from "../lib/api";
+import { createCheckoutSession } from "../services/billingApi";
 import { getAuth } from "firebase/auth";
 const PLANS = [
   {

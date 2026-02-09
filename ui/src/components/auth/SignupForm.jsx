@@ -7,9 +7,9 @@ import {
   IconLogin2,
 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import { firebaseSignup } from "../services/firebaseAuth";
-import { backendSignup } from "../services/authApi";
-import { validateSignup } from "../utils/validators";
+import { firebaseSignup } from "../../services/firebaseAuth";
+import { backendSignup } from "../../services/authApi";
+import { validateSignup } from "../../utils/validators";
 import toast from "react-hot-toast";
 
 export default function SignupForm() {

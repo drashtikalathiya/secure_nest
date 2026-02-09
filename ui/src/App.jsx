@@ -1,10 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import LoginForm from "./components/LoginForm";
-import SignupForm from "./components/SignupForm";
+import LoginForm from "./components/auth/LoginForm";
+import SignupForm from "./components/auth/SignupForm";
 import Subscription from "./pages/Subscription";
 import Dashboard from "./pages/Dashboard";
-import AuthLayout from "./components/AuthLayout";
-import AppLayout from "./components/AppLayout";
+import AuthLayout from "./components/layouts/AuthLayout";
+import AppLayout from "./components/layouts/AppLayout";
 import Members from "./pages/Members";
 import Passwords from "./pages/Passwords";
 import Contacts from "./pages/Contacts";

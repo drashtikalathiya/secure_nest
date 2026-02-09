@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { IconMail, IconEye, IconEyeOff, IconLogin2 } from "@tabler/icons-react";
 import { useNavigate } from "react-router-dom";
-import { firebaseLogin } from "../services/firebaseAuth";
-import { backendLogin } from "../services/authApi";
-import { validateLogin } from "../utils/validators";
+import { firebaseLogin } from "../../services/firebaseAuth";
+import { backendLogin } from "../../services/authApi";
+import { validateLogin } from "../../utils/validators";
 import toast from "react-hot-toast";
 
 export default function LoginForm() {

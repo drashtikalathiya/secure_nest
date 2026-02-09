@@ -1,33 +1,17 @@
 import { useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
-  IconLayoutDashboard,
-  IconUsers,
-  IconKey,
-  IconAddressBook,
-  IconFileText,
-  IconCreditCard,
-  IconHeartbeat,
   IconSearch,
   IconBell,
-  IconChevronDown,
-  IconPlus,
   IconShieldLock,
-  IconCrown,
   IconLogout,
   IconMenu2,
   IconX,
 } from "@tabler/icons-react";
-
-const NAV_ITEMS = [
-  { label: "Dashboard", to: "/dashboard", icon: IconLayoutDashboard },
-  { label: "Family Members", to: "/members", icon: IconUsers },
-  { label: "Passwords", to: "/passwords", icon: IconKey },
-  { label: "Contacts", to: "/contacts", icon: IconAddressBook },
-  { label: "Documents", to: "/documents", icon: IconFileText },
-  { label: "Finance", to: "/finance", icon: IconCreditCard },
-  { label: "Medical Records", to: "/medical", icon: IconHeartbeat },
-];
+import { firebaseLogout } from "../../services/firebaseAuth";
+import { useAuth } from "../../context/AuthContext";
+import { NAV_ITEMS } from "../../const/navigation";
+import { PAGE_META } from "../../const/pageMeta";
 
 function BrandBlock({ className = "" }) {
   return (
@@ -79,6 +63,34 @@ function NavItem({ item, onSelect }) {
 
 export default function AppLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
+
+  const displayName =
+    user?.displayName || user?.email?.split("@")[0] || "there";
+
+  const meta = PAGE_META[location.pathname] || PAGE_META["/dashboard"];
+
+  const title =
+    location.pathname === "/dashboard"
+      ? `${greeting}, ${displayName}`
+      : meta.title;
+
+  const subtitle = meta.subtitle;
+
+  const handleLogout = async () => {
+    try {
+      await firebaseLogout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#101922] text-slate-100">
@@ -93,7 +105,11 @@ export default function AppLayout() {
           </div>
 
           <div className="mt-auto pt-6">
-            <button className="flex w-full items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-200 transition hover:border-red-400/60 hover:bg-red-500/20">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-200 transition hover:border-red-400/60 hover:bg-red-500/20"
+            >
               <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/20 text-red-200">
                 <IconLogout size={18} stroke={1.8} />
               </span>
@@ -134,7 +150,11 @@ export default function AppLayout() {
               </div>
 
               <div className="mt-auto pt-6">
-                <button className="flex w-full items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-200 transition hover:border-red-400/60 hover:bg-red-500/20">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-200 transition hover:border-red-400/60 hover:bg-red-500/20"
+                >
                   <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/20 text-red-200">
                     <IconLogout size={18} stroke={1.8} />
                   </span>
@@ -189,9 +209,12 @@ export default function AppLayout() {
           </header>
 
           <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8">
-            <div className="mt-8">
-              <Outlet />
+            <div>
+              <h1 className="text-xl font-semibold text-white">{title}</h1>
+              <p className="mt-1 text-sm text-slate-400">{subtitle}</p>
             </div>
+
+            <div className="mt-6">{/* <Outlet /> */}</div>
           </main>
         </div>
       </div>
