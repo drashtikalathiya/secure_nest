@@ -7,7 +7,7 @@ import {
 
 export default function AuthLayout({ children }) {
   return (
-    <div className="min-h-screen w-full flex bg-[#0b1220] text-white font-sans">
+    <div className="min-h-screen w-full flex bg-[#101922] text-white font-sans">
       <div className="hidden lg:flex w-1/2 relative bg-gradient-to-br from-[#0f66bd] to-[#0b3d6e] items-center justify-center p-12">
         <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#ffffff_1px,transparent_1px)] bg-[size:22px_22px]" />
 

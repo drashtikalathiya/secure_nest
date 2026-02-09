@@ -1,0 +1,200 @@
+import { useState } from "react";
+import { NavLink, Outlet } from "react-router-dom";
+import {
+  IconLayoutDashboard,
+  IconUsers,
+  IconKey,
+  IconAddressBook,
+  IconFileText,
+  IconCreditCard,
+  IconHeartbeat,
+  IconSearch,
+  IconBell,
+  IconChevronDown,
+  IconPlus,
+  IconShieldLock,
+  IconCrown,
+  IconLogout,
+  IconMenu2,
+  IconX,
+} from "@tabler/icons-react";
+
+const NAV_ITEMS = [
+  { label: "Dashboard", to: "/dashboard", icon: IconLayoutDashboard },
+  { label: "Family Members", to: "/members", icon: IconUsers },
+  { label: "Passwords", to: "/passwords", icon: IconKey },
+  { label: "Contacts", to: "/contacts", icon: IconAddressBook },
+  { label: "Documents", to: "/documents", icon: IconFileText },
+  { label: "Finance", to: "/finance", icon: IconCreditCard },
+  { label: "Medical Records", to: "/medical", icon: IconHeartbeat },
+];
+
+function BrandBlock({ className = "" }) {
+  return (
+    <div
+      className={`flex items-center gap-3 rounded-2xl bg-slate-900/60 px-4 py-3 ${className}`}
+    >
+      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-500/20 text-sky-300">
+        <IconShieldLock size={22} stroke={2} />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-white">SecureNest</p>
+        <p className="text-xs text-slate-400">Family Security Vault</p>
+      </div>
+    </div>
+  );
+}
+
+function NavItem({ item, onSelect }) {
+  const Icon = item.icon;
+  return (
+    <NavLink
+      to={item.to}
+      onClick={onSelect}
+      className={({ isActive }) =>
+        `group flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${
+          isActive
+            ? "bg-slate-800/80 text-sky-400"
+            : "text-slate-300 hover:bg-slate-800/60 hover:text-white"
+        }`
+      }
+    >
+      {({ isActive }) => (
+        <>
+          <span
+            className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+              isActive
+                ? "bg-sky-500/20 text-sky-300"
+                : "bg-slate-800/70 text-slate-300"
+            }`}
+          >
+            <Icon size={18} stroke={1.8} />
+          </span>
+          <span className="font-medium">{item.label}</span>
+        </>
+      )}
+    </NavLink>
+  );
+}
+
+export default function AppLayout() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  return (
+    <div className="min-h-screen bg-[#101922] text-slate-100">
+      <div className="flex min-h-screen w-full">
+        <aside className="hidden w-64 flex-col border-r border-slate-800/70 bg-[#0d1627] px-5 py-4 lg:flex lg:w-72">
+          <BrandBlock />
+
+          <div className="mt-7 space-y-2">
+            {NAV_ITEMS.map((item) => (
+              <NavItem key={item.label} item={item} />
+            ))}
+          </div>
+
+          <div className="mt-auto pt-6">
+            <button className="flex w-full items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-200 transition hover:border-red-400/60 hover:bg-red-500/20">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/20 text-red-200">
+                <IconLogout size={18} stroke={1.8} />
+              </span>
+              Logout
+            </button>
+          </div>
+        </aside>
+
+        {isSidebarOpen ? (
+          <div className="fixed inset-0 z-40 lg:hidden">
+            <button
+              type="button"
+              className="absolute inset-0 bg-slate-950/70"
+              onClick={() => setIsSidebarOpen(false)}
+              aria-label="Close sidebar"
+            />
+            <aside className="relative z-50 flex h-full w-72 max-w-[85%] flex-col border-r border-slate-800/70 bg-[#0d1627] px-5 py-4 shadow-2xl">
+              <div className="flex items-start justify-between gap-3">
+                <BrandBlock />
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarOpen(false)}
+                  aria-label="Close sidebar"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800/70 bg-slate-800/80 text-sky-300 transition hover:bg-slate-800/60 hover:text-white mt-3"
+                >
+                  <IconX size={18} />
+                </button>
+              </div>
+
+              <div className="mt-7 space-y-2">
+                {NAV_ITEMS.map((item) => (
+                  <NavItem
+                    key={item.label}
+                    item={item}
+                    onSelect={() => setIsSidebarOpen(false)}
+                  />
+                ))}
+              </div>
+
+              <div className="mt-auto pt-6">
+                <button className="flex w-full items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-200 transition hover:border-red-400/60 hover:bg-red-500/20">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/20 text-red-200">
+                    <IconLogout size={18} stroke={1.8} />
+                  </span>
+                  Logout
+                </button>
+              </div>
+            </aside>
+          </div>
+        ) : null}
+
+        <div className="flex min-h-screen flex-1 flex-col">
+          <header className="sticky top-0 z-20 border-b border-slate-800/70 bg-[#101922]/90 px-5 py-4 backdrop-blur sm:px-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <button
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800/80 bg-slate-900/50 text-slate-200 lg:hidden"
+                  onClick={() => setIsSidebarOpen(true)}
+                  aria-label="Open sidebar"
+                >
+                  <IconMenu2 size={18} />
+                </button>
+                <div className="relative flex w-full max-w-[360px] items-center sm:max-w-[420px] md:w-[320px] lg:w-[420px]">
+                  <IconSearch
+                    size={18}
+                    className="absolute left-4 text-slate-400"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search across all vault items..."
+                    className="w-full rounded-2xl border border-slate-800/70 bg-slate-900/60 py-2.5 pl-11 pr-4 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500/70 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800/80 bg-slate-900/50 text-slate-200">
+                  <IconBell size={18} />
+                </button>
+                <button className="flex items-center gap-3 rounded-2xl border border-slate-800/80 bg-slate-900/60 px-3 py-2 text-left">
+                  <div className="h-9 w-9 rounded-full bg-gradient-to-br from-sky-400/70 to-indigo-500/70" />
+                  <div className="hidden md:block">
+                    <p className="text-xs font-semibold text-white">
+                      Alexander Wright
+                    </p>
+                    <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                      Vault Owner
+                    </p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8">
+            <div className="mt-8">
+              <Outlet />
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}
