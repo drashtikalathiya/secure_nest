@@ -12,6 +12,7 @@ import { firebaseLogout } from "../../services/firebaseAuth";
 import { useAuth } from "../../context/AuthContext";
 import { NAV_ITEMS } from "../../const/navigation";
 import { PAGE_META } from "../../const/pageMeta";
+import { FAMILY_MEMBERS } from "../../const/dashboardData";
 
 function BrandBlock({ className = "" }) {
   return (
@@ -67,21 +68,19 @@ export default function AppLayout() {
   const location = useLocation();
   const { user } = useAuth();
 
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
-
   const displayName =
-    user?.displayName || user?.email?.split("@")[0] || "there";
+    user?.displayName || user?.email?.split("@")[0] || "SecureNest";
 
   const meta = PAGE_META[location.pathname] || PAGE_META["/dashboard"];
 
   const title =
     location.pathname === "/dashboard"
-      ? `${greeting}, ${displayName}`
+      ? `Welcome Back, ${displayName}`
       : meta.title;
 
   const subtitle = meta.subtitle;
+  const isDashboard = location.pathname === "/dashboard";
+  const activeMembers = FAMILY_MEMBERS?.length;
 
   const handleLogout = async () => {
     try {
@@ -93,9 +92,9 @@ export default function AppLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-[#101922] text-slate-100">
+    <div className="min-h-screen bg-background-dark text-slate-100">
       <div className="flex min-h-screen w-full">
-        <aside className="hidden w-64 flex-col border-r border-slate-800/70 bg-[#0d1627] px-5 py-4 lg:flex lg:w-72">
+        <aside className="hidden w-64 flex-col border-r border-slate-800/70 bg-background-dark px-5 py-4 lg:flex lg:w-72">
           <BrandBlock />
 
           <div className="mt-7 space-y-2">
@@ -126,7 +125,7 @@ export default function AppLayout() {
               onClick={() => setIsSidebarOpen(false)}
               aria-label="Close sidebar"
             />
-            <aside className="relative z-50 flex h-full w-72 max-w-[85%] flex-col border-r border-slate-800/70 bg-[#0d1627] px-5 py-4 shadow-2xl">
+            <aside className="relative z-50 flex h-full w-72 max-w-[85%] flex-col border-r border-slate-800/70 bg-background-dark px-5 py-4 shadow-2xl">
               <div className="flex items-start justify-between gap-3">
                 <BrandBlock />
                 <button
@@ -166,7 +165,7 @@ export default function AppLayout() {
         ) : null}
 
         <div className="flex min-h-screen flex-1 flex-col">
-          <header className="sticky top-0 z-20 border-b border-slate-800/70 bg-[#101922]/90 px-5 py-4 backdrop-blur sm:px-6">
+          <header className="sticky top-0 z-20 border-b border-slate-800/70 bg-background-dark/90 px-5 py-4 backdrop-blur sm:px-6">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <button
@@ -209,12 +208,37 @@ export default function AppLayout() {
           </header>
 
           <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8">
-            <div>
-              <h1 className="text-xl font-semibold text-white">{title}</h1>
-              <p className="mt-1 text-sm text-slate-400">{subtitle}</p>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="max-w-2xl">
+                <h1 className="text-2xl font-semibold text-white">{title}</h1>
+                <p className="text-sm text-slate-400 mt-1">{subtitle}</p>
+              </div>
+
+              {isDashboard ? (
+                <div className="flex items-center gap-3 rounded-2xl border border-slate-800/80 bg-slate-900/70 px-3 py-2 text-xs text-slate-300">
+                  <div className="flex -space-x-2">
+                    <div className="h-7 w-7 rounded-full bg-gradient-to-br from-sky-400/70 to-indigo-500/70 ring-2 ring-slate-900/80" />
+                    <div className="h-7 w-7 rounded-full bg-gradient-to-br from-amber-400/70 to-rose-500/70 ring-2 ring-slate-900/80" />
+                    <div className="h-7 w-7 rounded-full bg-gradient-to-br from-emerald-400/70 to-teal-500/70 ring-2 ring-slate-900/80" />
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-800/80 text-[10px] font-semibold text-slate-200 ring-2 ring-slate-900/80">
+                      +2
+                    </div>
+                  </div>
+                  <div className="leading-tight">
+                    <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                      Active Members
+                    </p>
+                    <p className="text-xs font-semibold text-slate-200">
+                      {activeMembers} Family Members
+                    </p>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
-            <div className="mt-6">{/* <Outlet /> */}</div>
+            <div className="mt-6">
+              <Outlet />
+            </div>
           </main>
         </div>
       </div>
