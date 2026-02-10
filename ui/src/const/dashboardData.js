@@ -53,21 +53,3 @@ export const VAULT_SECTIONS = [
     to: "/contacts",
   },
 ];
-
-export const FAMILY_MEMBERS = [
-  {
-    name: "Alexander (You)",
-    role: "Administrator",
-    status: "Active",
-  },
-  {
-    name: "Sarah Wright",
-    role: "Full Access",
-    status: "Active",
-  },
-  {
-    name: "John Wright",
-    role: "Limited (Child)",
-    status: "Limited",
-  },
-];
