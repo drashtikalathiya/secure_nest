@@ -10,6 +10,7 @@ import {
 } from "@tabler/icons-react";
 import { firebaseLogout } from "../../services/firebaseAuth";
 import { NAV_ITEMS } from "../../const/navigation";
+import { useAuth } from "../../context/AuthContext";
 
 function BrandBlock({ className = "" }) {
   return (
@@ -62,6 +63,15 @@ function NavItem({ item, onSelect }) {
 export default function AppLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const displayName = user?.name?.trim() || user?.email?.split("@")?.[0];
+  const roleLabel =
+    user?.role === "owner"
+      ? "Vault Owner"
+      : user?.role === "member"
+        ? "Family Member"
+        : "Member";
 
   const handleLogout = async () => {
     try {
@@ -177,10 +187,10 @@ export default function AppLayout() {
                   <div className="h-9 w-9 rounded-full bg-gradient-to-br from-sky-400/70 to-indigo-500/70" />
                   <div className="hidden md:block">
                     <p className="text-xs font-semibold text-white">
-                      Alexander Wright
+                      {displayName}
                     </p>
                     <p className="text-[10px] uppercase tracking-wide text-slate-400">
-                      Vault Owner
+                      {roleLabel}
                     </p>
                   </div>
                 </button>

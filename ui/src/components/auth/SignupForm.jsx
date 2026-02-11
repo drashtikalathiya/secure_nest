@@ -41,11 +41,13 @@ export default function SignupForm() {
     try {
       const user = await firebaseSignup(email, password);
       const token = await user.getIdToken();
-      await backendSignup(token, {
+      const data = await backendSignup(token, {
         name: fullName,
       });
+      const isSubscribed = Boolean(data?.data?.is_subscribed);
+
       toast.success("User registered successfully!");
-      navigate("/login");
+      navigate(isSubscribed ? "/dashboard" : "/subscription", { replace: true });
     } catch (err) {
       console.error("err", err);
       if (err.code === "auth/email-already-in-use") {

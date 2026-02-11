@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Stripe from 'stripe';
 import { User } from '../users/user.entity';
+import admin from '../../config/firebase-admin';
 
 @Injectable()
 export class BillingService {
@@ -37,6 +38,8 @@ export class BillingService {
         subscribed_id: subscribedId ?? null,
       },
     );
+
+    await this.syncSubscriptionClaim(firebaseUid, true);
   }
 
   async handleWebhook(rawBody: Buffer, signature: string | string[]) {
@@ -70,5 +73,25 @@ export class BillingService {
     }
 
     return { received: true };
+  }
+
+  private async syncSubscriptionClaim(
+    firebaseUid: string,
+    isSubscribed: boolean,
+  ) {
+    try {
+      const userRecord = await admin.auth().getUser(firebaseUid);
+      const existingClaims = userRecord.customClaims || {};
+
+      await admin.auth().setCustomUserClaims(firebaseUid, {
+        ...existingClaims,
+        is_subscribed: isSubscribed,
+      });
+    } catch (error) {
+      console.error('Failed to sync subscription claim:', {
+        uid: firebaseUid,
+        message: error?.message ?? error,
+      });
+    }
   }
 }

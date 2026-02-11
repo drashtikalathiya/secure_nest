@@ -8,8 +8,7 @@ import { FAMILY_MEMBERS } from "../const/membersData";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const displayName =
-    user?.displayName || user?.email?.split("@")[0] || "SecureNest";
+  const displayName = user?.name || user?.email?.split("@")[0];
   const activeMembers = FAMILY_MEMBERS?.length;
   const subtitle = PAGE_META["/dashboard"]?.subtitle;
 

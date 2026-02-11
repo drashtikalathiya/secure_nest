@@ -1,6 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginForm from "./components/auth/LoginForm";
 import SignupForm from "./components/auth/SignupForm";
+import {
+  ProtectedRoute,
+  PublicRoute,
+  SubscriptionRoute,
+} from "./components/auth/AuthGuards";
 import Subscription from "./pages/Subscription";
 import Dashboard from "./pages/Dashboard";
 import AuthLayout from "./components/layouts/AuthLayout";
@@ -18,25 +23,32 @@ export default function App() {
     <BrowserRouter>
       <Toaster position="top-right" reverseOrder={false} />
       <Routes>
-        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route
-          path="/login"
           element={
-            <AuthLayout>
-              <LoginForm />
-            </AuthLayout>
+            <PublicRoute>
+              <AuthLayout />
+            </PublicRoute>
+          }
+        >
+          <Route path="/login" element={<LoginForm />} />
+          <Route path="/signup" element={<SignupForm />} />
+        </Route>
+        <Route
+          path="/subscription"
+          element={
+            <SubscriptionRoute>
+              <Subscription />
+            </SubscriptionRoute>
           }
         />
         <Route
-          path="/signup"
           element={
-            <AuthLayout>
-              <SignupForm />
-            </AuthLayout>
+            <ProtectedRoute>
+              <AppLayout />
+            </ProtectedRoute>
           }
-        />
-        <Route path="/subscription" element={<Subscription />} />
-        <Route element={<AppLayout />}>
+        >
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/members" element={<Members />} />
           <Route path="/passwords" element={<Passwords />} />

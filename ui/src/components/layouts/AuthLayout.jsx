@@ -4,6 +4,7 @@ import {
   IconFileText,
   IconHeartbeat,
 } from "@tabler/icons-react";
+import { Outlet } from "react-router-dom";
 
 export default function AuthLayout({ children }) {
   return (
@@ -28,7 +29,7 @@ export default function AuthLayout({ children }) {
       </div>
 
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6">
-        <div className="w-full max-w-md space-y-6">{children}</div>
+        <div className="w-full max-w-md space-y-6">{children || <Outlet />}</div>
       </div>
     </div>
   );

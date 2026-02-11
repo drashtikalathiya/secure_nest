@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/user.entity';
+import admin from '../../config/firebase-admin';
 
 @Injectable()
 export class AuthService {
@@ -26,6 +27,8 @@ export class AuthService {
         throw new NotFoundException('USER_NOT_REGISTERED');
       }
 
+      await this.syncFirebaseClaims(user);
+
       return user;
     } catch (error) {
       if (error instanceof NotFoundException) {
@@ -43,7 +46,10 @@ export class AuthService {
       where: { firebase_uid: uid },
     });
 
-    if (existing) return existing;
+    if (existing) {
+      await this.syncFirebaseClaims(existing);
+      return existing;
+    }
 
     const user = this.userRepo.create({
       firebase_uid: uid,
@@ -52,6 +58,37 @@ export class AuthService {
       role: 'owner',
     });
 
-    return this.userRepo.save(user);
+    const savedUser = await this.userRepo.save(user);
+    await this.syncFirebaseClaims(savedUser);
+    return savedUser;
+  }
+
+  private async syncFirebaseClaims(user: User): Promise<void> {
+    try {
+      const userRecord = await admin.auth().getUser(user.firebase_uid);
+      const existingClaims = userRecord.customClaims || {};
+      const nextClaims: Record<string, unknown> = {
+        ...existingClaims,
+        role: user.role,
+        is_subscribed: Boolean(user.is_subscribed),
+      };
+
+      if (user.name) {
+        nextClaims.name = user.name;
+      }
+
+      await admin.auth().setCustomUserClaims(user.firebase_uid, nextClaims);
+
+      if (user.name && userRecord.displayName !== user.name) {
+        await admin.auth().updateUser(user.firebase_uid, {
+          displayName: user.name,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to sync Firebase user claims:', {
+        uid: user.firebase_uid,
+        message: error?.message ?? error,
+      });
+    }
   }
 }
