@@ -1,15 +1,15 @@
-import {
-  IconSend,
-  IconSearch,
-  IconDotsVertical,
-  IconUserPlus,
-} from "@tabler/icons-react";
+import { IconSend, IconSearch, IconX, IconUserPlus } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import ConfirmModal from "../components/common/ConfirmModal";
 import PageHeader from "../components/common/PageHeader";
 import { ROLE_STYLES } from "../const/membersData";
 import { useAuth } from "../context/AuthContext";
-import { getFamilyMembers } from "../services/usersApi";
+import {
+  deleteFamilyMember,
+  getFamilyMembers,
+  updateMemberPermissions,
+} from "../services/usersApi";
 import { auth } from "../services/firebase";
 import {
   cancelInvitation,
@@ -43,6 +43,14 @@ const normalizeMember = (member) => {
     email: member.email,
     role: roleLabel,
     initials: getInitials(name, member.email),
+    permissions:
+      roleLabel === "Owner"
+        ? { view: true, edit: true, delete: true }
+        : {
+            view: Boolean(member.permission_view),
+            edit: Boolean(member.permission_edit),
+            delete: Boolean(member.permission_delete),
+          },
   };
 };
 
@@ -107,7 +115,10 @@ export default function Members() {
   const [loading, setLoading] = useState(true);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [actionLoadingById, setActionLoadingById] = useState({});
+  const [permissionLoadingById, setPermissionLoadingById] = useState({});
   const [permissions, setPermissions] = useState({});
+  const [memberToDelete, setMemberToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const filteredMembers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -125,11 +136,15 @@ export default function Members() {
     if (!query) return allRows;
 
     return allRows.filter((row) =>
-      String(row.name || row.email || "").toLowerCase().includes(query),
+      String(row.name || row.email || "")
+        .toLowerCase()
+        .includes(query),
     );
   }, [members, pendingInvites, search]);
 
-  const activeMembers = filteredMembers.filter((row) => row.status !== "pending");
+  const activeMembers = filteredMembers.filter(
+    (row) => row.status !== "pending",
+  );
   const visiblePendingInvites = filteredMembers.filter(
     (row) => row.status === "pending",
   );
@@ -140,7 +155,8 @@ export default function Members() {
       const next = {};
       normalizedMembers.forEach((member) => {
         const key = getMemberKey(member);
-        next[key] = prev[key] || getDefaultPermissions(member.role);
+        next[key] =
+          prev[key] || member.permissions || getDefaultPermissions(member.role);
       });
       return next;
     });
@@ -225,6 +241,52 @@ export default function Members() {
     }
   };
 
+  const handleTogglePermission = async (member, key) => {
+    const memberKey = getMemberKey(member);
+    const current =
+      permissions[memberKey] || getDefaultPermissions(member.role);
+    const next = { ...current, [key]: !current[key] };
+
+    setPermissions((prev) => ({
+      ...prev,
+      [memberKey]: next,
+    }));
+    setPermissionLoadingById((prev) => ({ ...prev, [memberKey]: true }));
+
+    try {
+      const token = await auth.currentUser.getIdToken();
+      await updateMemberPermissions(token, member.id, next);
+    } catch (error) {
+      setPermissions((prev) => ({
+        ...prev,
+        [memberKey]: current,
+      }));
+      toast.error(error?.message || "Failed to update permissions.");
+    } finally {
+      setPermissionLoadingById((prev) => ({ ...prev, [memberKey]: false }));
+    }
+  };
+
+  const handleDeleteMember = async () => {
+    if (!memberToDelete) return;
+    try {
+      setDeleteLoading(true);
+      const token = await auth.currentUser.getIdToken();
+      const memberKey = getMemberKey(memberToDelete);
+      setActionLoadingById((prev) => ({ ...prev, [memberKey]: true }));
+      await deleteFamilyMember(token, memberToDelete.id);
+      toast.success("Member deleted.");
+      setMemberToDelete(null);
+      await loadData();
+    } catch (error) {
+      toast.error(error?.message || "Failed to delete member.");
+    } finally {
+      const memberKey = getMemberKey(memberToDelete);
+      setActionLoadingById((prev) => ({ ...prev, [memberKey]: false }));
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <section>
       <PageHeader
@@ -246,14 +308,14 @@ export default function Members() {
                 className="mt-2 w-full rounded-xl border border-slate-800/80 bg-slate-950/40 px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:border-sky-500/60 focus:outline-none"
               />
             </div>
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                  Initial Role
-                </label>
-                <div className="mt-2 rounded-xl border border-slate-800/80 bg-slate-950/40 px-4 py-2.5 text-sm font-medium text-slate-200">
-                  Member
-                </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Initial Role
+              </label>
+              <div className="mt-2 rounded-xl border border-slate-800/80 bg-slate-950/40 px-4 py-2.5 text-sm font-medium text-slate-200">
+                Member
               </div>
+            </div>
             <div className="flex items-end">
               <button
                 type="button"
@@ -270,7 +332,7 @@ export default function Members() {
       ) : null}
 
       <div className="flex flex-wrap items-center justify-between gap-4 py-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <p className="text-sm font-semibold uppercase tracking-wide text-slate-400">
           Current Members ({filteredMembers.length})
         </p>
         <div className="relative w-full max-w-sm">
@@ -281,7 +343,7 @@ export default function Members() {
           <input
             type="text"
             placeholder="Search family..."
-            className="w-full rounded-xl border border-slate-800/80 bg-slate-900/60 py-2 pl-9 pr-3 text-xs text-slate-200 placeholder:text-slate-500 focus:border-sky-500/60 focus:outline-none"
+            className="w-full rounded-xl border border-slate-800/80 bg-slate-900/60 py-3 pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500/60 focus:outline-none"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -295,7 +357,9 @@ export default function Members() {
           </div>
         ) : null}
 
-        {!loading && activeMembers.length === 0 && visiblePendingInvites.length === 0 ? (
+        {!loading &&
+        activeMembers.length === 0 &&
+        visiblePendingInvites.length === 0 ? (
           <div className="rounded-2xl border border-slate-800/90 bg-slate-900/60 px-5 py-4 text-sm text-slate-400">
             No members found.
           </div>
@@ -304,18 +368,18 @@ export default function Members() {
         {activeMembers.map((member) => (
           <div
             key={member.id || member.email}
-            className="flex flex-col gap-4 rounded-2xl border border-slate-800/90 bg-slate-900/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-4 rounded-2xl border border-slate-800/90 bg-slate-900/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between relative"
           >
             <div className="flex items-start justify-between gap-3 sm:items-center">
-                <div className="flex items-center gap-3">
-                <div
-                  className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-500/60 bg-transparent text-sm font-semibold text-slate-100"
-                >
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-500/60 bg-transparent text-xl font-semibold text-slate-100">
                   {member.initials}
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-white">{member.name}</p>
+                    <p className="text-sm font-semibold text-white">
+                      {member.name}
+                    </p>
                     <span
                       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
                         ROLE_STYLES[member.role]
@@ -327,13 +391,6 @@ export default function Members() {
                   <p className="text-xs text-slate-500">{member.email}</p>
                 </div>
               </div>
-              <button
-                type="button"
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-800/80 bg-slate-900/70 text-slate-400 transition hover:text-white sm:hidden"
-                aria-label="Member actions"
-              >
-                <IconDotsVertical size={16} />
-              </button>
             </div>
 
             <div className="h-px w-full bg-slate-800/70 sm:hidden" />
@@ -343,53 +400,55 @@ export default function Members() {
               const memberPerms =
                 permissions[memberKey] || getDefaultPermissions(member.role);
               const isOwnerRow = member.role === "Owner";
-              const disablePermissions = !isOwner || isOwnerRow;
-              const updatePermission = (key) => {
-                if (disablePermissions) return;
-                setPermissions((prev) => ({
-                  ...prev,
-                  [memberKey]: {
-                    ...memberPerms,
-                    [key]: !memberPerms[key],
-                  },
-                }));
-              };
+              const isPermissionLoading = Boolean(
+                permissionLoadingById[memberKey],
+              );
+              const isDeleteLoading = Boolean(actionLoadingById[memberKey]);
+              const disablePermissions =
+                !isOwner || isOwnerRow || isPermissionLoading;
+              const canDeleteMember = isOwner && !isOwnerRow;
 
               return (
                 <div className="flex items-center justify-between gap-3 sm:gap-4">
                   <div className="grid flex-1 grid-cols-3 gap-3 text-[9px] font-semibold uppercase tracking-wide text-slate-500 sm:flex sm:items-center sm:gap-4">
-                    <div className="flex flex-col items-center gap-2">
+                    <div className="flex flex-col text-xs items-center gap-2">
                       View
                       <Toggle
                         checked={memberPerms.view}
-                        onToggle={() => updatePermission("view")}
+                        onToggle={() => handleTogglePermission(member, "view")}
                         disabled={disablePermissions}
                       />
                     </div>
-                    <div className="flex flex-col items-center gap-2">
+                    <div className="flex flex-col text-xs items-center gap-2">
                       Edit
                       <Toggle
                         checked={memberPerms.edit}
-                        onToggle={() => updatePermission("edit")}
+                        onToggle={() => handleTogglePermission(member, "edit")}
                         disabled={disablePermissions}
                       />
                     </div>
-                    <div className="flex flex-col items-center gap-2">
+                    <div className="flex flex-col text-xs items-center gap-2">
                       Delete
                       <Toggle
                         checked={memberPerms.delete}
-                        onToggle={() => updatePermission("delete")}
+                        onToggle={() =>
+                          handleTogglePermission(member, "delete")
+                        }
                         disabled={disablePermissions}
                       />
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    className="hidden h-8 w-8 items-center justify-center rounded-lg border border-slate-800/80 bg-slate-900/70 text-slate-400 transition hover:text-white sm:flex"
-                    aria-label="Member actions"
-                  >
-                    <IconDotsVertical size={16} />
-                  </button>
+                  {canDeleteMember ? (
+                    <button
+                      type="button"
+                      onClick={() => setMemberToDelete(member)}
+                      disabled={isDeleteLoading}
+                      className="flex h-6 w-6 absolute top-[-12px] right-[-6px]  rounded-full border border-rose-400  items-center justify-center text-rose-400 transition disabled:cursor-not-allowed disabled:opacity-60"
+                      aria-label="Delete member"
+                    >
+                      <IconX size={16} />
+                    </button>
+                  ) : null}
                 </div>
               );
             })()}
@@ -408,7 +467,9 @@ export default function Members() {
                   <IconUserPlus size={16} />
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-semibold text-slate-200">{invite.email}</p>
+                  <p className="text-sm font-semibold text-slate-200">
+                    {invite.email}
+                  </p>
                   <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase text-amber-300">
                     Pending
                   </span>
@@ -441,6 +502,19 @@ export default function Members() {
           );
         })}
       </div>
+
+      <ConfirmModal
+        open={Boolean(memberToDelete)}
+        title="Remove Member?"
+        message={`Are you sure you want to remove ${
+          memberToDelete?.name || memberToDelete?.email || "this member"
+        } from the vault?`}
+        confirmLabel="Remove Member"
+        cancelLabel="Cancel"
+        onConfirm={handleDeleteMember}
+        onCancel={() => setMemberToDelete(null)}
+        confirmLoading={deleteLoading}
+      />
     </section>
   );
 }

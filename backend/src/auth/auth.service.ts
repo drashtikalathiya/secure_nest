@@ -2,7 +2,6 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -20,10 +19,6 @@ export class AuthService {
     private readonly invitationsService: InvitationsService,
   ) {}
 
-  /* -------------------------------------------------------------------------- */
-  /*                                VALIDATE USER                               */
-  /* -------------------------------------------------------------------------- */
-
   async validateUser(firebaseUser: any): Promise<any> {
     const { uid } = firebaseUser;
 
@@ -39,10 +34,6 @@ export class AuthService {
 
     return this.buildAuthResponse(user);
   }
-
-  /* -------------------------------------------------------------------------- */
-  /*                                REGISTER USER                               */
-  /* -------------------------------------------------------------------------- */
 
   async registerUser(firebaseUser: any, body: any): Promise<any> {
     const { uid, email } = firebaseUser;
@@ -71,10 +62,6 @@ export class AuthService {
       : this.registerOwner(uid, email, body?.name);
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                               OWNER REGISTER                               */
-  /* -------------------------------------------------------------------------- */
-
   private async registerOwner(
     uid: string,
     email: string,
@@ -85,6 +72,9 @@ export class AuthService {
       email,
       name: name || null,
       role: 'owner',
+      permission_view: true,
+      permission_edit: true,
+      permission_delete: true,
     });
 
     user = await this.userRepo.save(user);
@@ -94,10 +84,6 @@ export class AuthService {
 
     return this.buildAuthResponse(user);
   }
-
-  /* -------------------------------------------------------------------------- */
-  /*                              MEMBER REGISTER                               */
-  /* -------------------------------------------------------------------------- */
 
   private async registerMember(
     uid: string,
@@ -115,6 +101,9 @@ export class AuthService {
       email,
       name: name || null,
       role: 'member',
+      permission_view: true,
+      permission_edit: false,
+      permission_delete: false,
     });
 
     member = await this.userRepo.save(member);
@@ -132,19 +121,11 @@ export class AuthService {
     return this.buildAuthResponse(member);
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                          SHARED AUTH RESPONSE BUILDER                      */
-  /* -------------------------------------------------------------------------- */
-
   private async buildAuthResponse(user: User) {
     const payload = await this.authPayload(user);
     await this.syncFirebaseClaims(user, payload.is_subscribed);
     return payload;
   }
-
-  /* -------------------------------------------------------------------------- */
-  /*                             AUTH PAYLOAD LOGIC                             */
-  /* -------------------------------------------------------------------------- */
 
   private async authPayload(user: User) {
     const isSubscribed = await this.getEffectiveSubscription(user);
@@ -175,20 +156,12 @@ export class AuthService {
     return Boolean(owner?.is_subscribed);
   }
 
-  /* -------------------------------------------------------------------------- */
-  /*                         OWNER FAMILY ID SAFETY CHECK                       */
-  /* -------------------------------------------------------------------------- */
-
   private async ensureOwnerFamilyId(user: User) {
     if (user.role === 'owner' && !user.family_owner_id) {
       user.family_owner_id = user.id;
       await this.userRepo.save(user);
     }
   }
-
-  /* -------------------------------------------------------------------------- */
-  /*                           FIREBASE CLAIM SYNC                              */
-  /* -------------------------------------------------------------------------- */
 
   private async syncFirebaseClaims(
     user: User,
