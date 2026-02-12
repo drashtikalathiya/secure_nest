@@ -1,9 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import Stripe from 'stripe';
 import { User } from '../users/user.entity';
 import admin from '../../config/firebase-admin';
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
 
 @Injectable()
 export class BillingService {
@@ -15,6 +22,20 @@ export class BillingService {
   private stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
   async createCheckoutSession(user, priceId: string) {
+    const dbUser = await this.userRepo.findOne({
+      where: { firebase_uid: user.uid },
+    });
+
+    if (!dbUser) {
+      throw new NotFoundException('User account was not found.');
+    }
+
+    if (dbUser.role !== 'owner') {
+      throw new ForbiddenException(
+        'Only an owner can purchase a subscription.',
+      );
+    }
+
     const session = await this.stripe.checkout.sessions.create({
       mode: 'subscription',
       customer_email: user.email,
@@ -39,7 +60,31 @@ export class BillingService {
       },
     );
 
-    await this.syncSubscriptionClaim(firebaseUid, true);
+    const owner = await this.userRepo.findOne({
+      where: { firebase_uid: firebaseUid, role: 'owner' },
+    });
+
+    if (!owner) return;
+
+    await this.syncFirebaseClaims(owner.firebase_uid, {
+      role: 'owner',
+      is_subscribed: true,
+    });
+
+    const members = await this.userRepo.find({
+      where: { family_owner_id: owner.id, role: 'member' },
+    });
+
+    if (!members.length) return;
+
+    await Promise.all(
+      members.map((member) =>
+        this.syncFirebaseClaims(member.firebase_uid, {
+          role: 'member',
+          is_subscribed: true,
+        }),
+      ),
+    );
   }
 
   async handleWebhook(rawBody: Buffer, signature: string | string[]) {
@@ -54,7 +99,7 @@ export class BillingService {
       );
     } catch (error) {
       console.error('Stripe webhook signature verification failed:', {
-        message: error?.message ?? error,
+        message: getErrorMessage(error),
       });
       throw error;
     }
@@ -75,22 +120,26 @@ export class BillingService {
     return { received: true };
   }
 
-  private async syncSubscriptionClaim(
+  private async syncFirebaseClaims(
     firebaseUid: string,
-    isSubscribed: boolean,
+    claims: Partial<{
+      role: 'owner' | 'member';
+      is_subscribed: boolean;
+    }>,
   ) {
     try {
       const userRecord = await admin.auth().getUser(firebaseUid);
-      const existingClaims = userRecord.customClaims || {};
 
-      await admin.auth().setCustomUserClaims(firebaseUid, {
-        ...existingClaims,
-        is_subscribed: isSubscribed,
-      });
+      const nextClaims = {
+        ...(userRecord.customClaims || {}),
+        ...claims,
+      };
+
+      await admin.auth().setCustomUserClaims(firebaseUid, nextClaims);
     } catch (error) {
-      console.error('Failed to sync subscription claim:', {
+      console.error('Failed to sync Firebase claims:', {
         uid: firebaseUid,
-        message: error?.message ?? error,
+        message: getErrorMessage(error),
       });
     }
   }

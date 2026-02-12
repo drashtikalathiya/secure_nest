@@ -17,6 +17,7 @@ import Documents from "./pages/Documents";
 import Finance from "./pages/Finance";
 import Medical from "./pages/Medical";
 import { Toaster } from "react-hot-toast";
+import AcceptInvitation from "./pages/AcceptInvitation";
 
 export default function App() {
   return (
@@ -34,6 +35,14 @@ export default function App() {
           <Route path="/login" element={<LoginForm />} />
           <Route path="/signup" element={<SignupForm />} />
         </Route>
+        <Route
+          path="/invite/accept"
+          element={
+            <PublicRoute>
+              <AcceptInvitation />
+            </PublicRoute>
+          }
+        />
         <Route
           path="/subscription"
           element={

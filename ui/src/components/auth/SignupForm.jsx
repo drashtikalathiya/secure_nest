@@ -6,24 +6,40 @@ import {
   IconEyeOff,
   IconLogin2,
 } from "@tabler/icons-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { firebaseSignup } from "../../services/firebaseAuth";
-import { backendSignup } from "../../services/authApi";
+import { backendSignup, getPostLoginPath } from "../../services/authApi";
 import { validateSignup } from "../../utils/validators";
 import toast from "react-hot-toast";
 
 export default function SignupForm() {
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get("inviteToken");
+  const inviteEmail = searchParams.get("email") || "";
+
   const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(inviteEmail);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState({});
+  const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
+
+  const clearFieldError = (field) => {
+    setError((prev) => {
+      if (!prev[field]) return prev;
+      const updated = { ...prev };
+      delete updated[field];
+      return updated;
+    });
+  };
 
   const handleSignup = async (e) => {
     e.preventDefault();
+    if (loading) return;
 
     const validationErrors = validateSignup({
       fullName,
@@ -37,22 +53,33 @@ export default function SignupForm() {
       return;
     }
 
-    setError({});
     try {
-      const user = await firebaseSignup(email, password);
-      const token = await user.getIdToken();
-      const data = await backendSignup(token, {
+      setLoading(true);
+      setError({});
+
+      const firebaseUser = await firebaseSignup(email, password);
+      const idToken = await firebaseUser.getIdToken();
+
+      const { data } = await backendSignup(idToken, {
         name: fullName,
+        inviteToken,
       });
-      const isSubscribed = Boolean(data?.data?.is_subscribed);
 
       toast.success("User registered successfully!");
-      navigate(isSubscribed ? "/dashboard" : "/subscription", { replace: true });
+
+      navigate(inviteToken ? "/dashboard" : getPostLoginPath(data), {
+        replace: true,
+      });
     } catch (err) {
-      console.error("err", err);
-      if (err.code === "auth/email-already-in-use") {
+      console.error("Signup error:", err);
+
+      if (err?.code === "auth/email-already-in-use") {
         toast.error("Email already exists. Please try another email.");
+      } else {
+        toast.error(err?.message || "Signup failed. Please try again.");
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -77,7 +104,10 @@ export default function SignupForm() {
               type="text"
               placeholder="John Doe"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) => {
+                setFullName(e.target.value);
+                clearFieldError("fullName");
+              }}
               className="w-full h-11 pr-10 px-4 rounded-md bg-[#121a28] border border-[#1f2a3a] focus:ring-2 focus:ring-primary"
             />
           </div>
@@ -96,9 +126,13 @@ export default function SignupForm() {
             <input
               type="email"
               value={email}
-              placeholder="name@example.com"
-              onChange={(e) => setEmail(e.target.value)}
+              readOnly={Boolean(inviteEmail)}
               autoComplete="email"
+              placeholder="name@example.com"
+              onChange={(e) => {
+                setEmail(e.target.value);
+                clearFieldError("email");
+              }}
               className="w-full h-11 pr-10 px-4 rounded-md bg-[#121a28] border border-[#1f2a3a] focus:ring-2 focus:ring-primary"
             />
           </div>
@@ -113,14 +147,17 @@ export default function SignupForm() {
             <input
               type={showPassword ? "text" : "password"}
               value={password}
-              placeholder="Create a strong password"
               autoComplete="new-password"
-              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Create a strong password"
+              onChange={(e) => {
+                setPassword(e.target.value);
+                clearFieldError("password");
+              }}
               className="w-full h-11 pr-10 px-4 rounded-md bg-[#121a28] border border-[#1f2a3a] focus:ring-2 focus:ring-primary"
             />
             <button
               type="button"
-              onClick={() => setShowPassword(!showPassword)}
+              onClick={() => setShowPassword((prev) => !prev)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
             >
               {showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
@@ -137,14 +174,17 @@ export default function SignupForm() {
             <input
               type={showConfirm ? "text" : "password"}
               value={confirmPassword}
-              placeholder="Re-enter your password"
               autoComplete="new-password"
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Re-enter your password"
+              onChange={(e) => {
+                setConfirmPassword(e.target.value);
+                clearFieldError("confirmPassword");
+              }}
               className="w-full h-11 pr-10 px-4 rounded-md bg-[#121a28] border border-[#1f2a3a] focus:ring-2 focus:ring-primary"
             />
             <button
               type="button"
-              onClick={() => setShowConfirm(!showConfirm)}
+              onClick={() => setShowConfirm((prev) => !prev)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
             >
               {showConfirm ? <IconEyeOff size={18} /> : <IconEye size={18} />}
@@ -155,8 +195,18 @@ export default function SignupForm() {
           )}
         </div>
 
-        <button className="w-full h-11 bg-primary rounded-md font-semibold flex items-center justify-center gap-2">
-          Create Account <IconLogin2 size={18} />
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full h-11 bg-primary rounded-md font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {loading ? (
+            "Creating Account..."
+          ) : (
+            <>
+              Create Account <IconLogin2 size={18} />
+            </>
+          )}
         </button>
       </form>
 
@@ -164,7 +214,15 @@ export default function SignupForm() {
         Already have an account?{" "}
         <span
           className="text-primary cursor-pointer"
-          onClick={() => navigate("/login")}
+          onClick={() =>
+            navigate(
+              inviteToken
+                ? `/login?inviteToken=${encodeURIComponent(
+                    inviteToken,
+                  )}&email=${encodeURIComponent(email)}`
+                : "/login",
+            )
+          }
         >
           Log in
         </span>

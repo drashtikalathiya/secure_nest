@@ -45,6 +45,27 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+## Invitation Email (Nodemailer)
+
+To send invitation emails, install Nodemailer in `backend/`:
+
+```bash
+npm install nodemailer
+```
+
+Configure SMTP environment variables:
+
+```bash
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_SECURE=false
+MAIL_USER=your_smtp_username
+MAIL_PASS=your_smtp_password
+MAIL_FROM=no-reply@securenest.app
+MAIL_FROM_NAME=SecureNest
+FRONTEND_URL=http://localhost:3000
+```
+
 ## Run tests
 
 ```bash

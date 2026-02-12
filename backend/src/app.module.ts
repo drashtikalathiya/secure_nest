@@ -7,6 +7,7 @@ import { databaseConfig } from 'config/database.config';
 import { AuthModule } from './auth/auth.module';
 import { BillingModule } from './billing/billing.module';
 import { UsersModule } from './users/users.module';
+import { InvitationsModule } from './invitations/invitations.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     BillingModule,
     UsersModule,
+    InvitationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

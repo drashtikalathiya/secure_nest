@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -7,75 +9,200 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import admin from '../../config/firebase-admin';
+import { InvitationsService } from '../invitations/invitations.service';
+import { getErrorMessage } from '../utils/errorMessage';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
-    private userRepo: Repository<User>,
+    private readonly userRepo: Repository<User>,
+    private readonly invitationsService: InvitationsService,
   ) {}
 
-  async validateUser(firebaseUser: any): Promise<User> {
-    try {
-      const { uid } = firebaseUser;
+  /* -------------------------------------------------------------------------- */
+  /*                                VALIDATE USER                               */
+  /* -------------------------------------------------------------------------- */
 
-      const user = await this.userRepo.findOne({
-        where: { firebase_uid: uid },
-      });
+  async validateUser(firebaseUser: any): Promise<any> {
+    const { uid } = firebaseUser;
 
-      if (!user) {
-        throw new NotFoundException('USER_NOT_REGISTERED');
-      }
-
-      await this.syncFirebaseClaims(user);
-
-      return user;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-
-      throw new InternalServerErrorException('AUTH_FAILED');
-    }
-  }
-
-  async registerUser(firebaseUser: any, body: any): Promise<User> {
-    const { uid, email } = firebaseUser;
-
-    const existing = await this.userRepo.findOne({
+    const user = await this.userRepo.findOne({
       where: { firebase_uid: uid },
     });
 
-    if (existing) {
-      await this.syncFirebaseClaims(existing);
-      return existing;
+    if (!user) {
+      throw new NotFoundException('User is not registered.');
     }
 
-    const user = this.userRepo.create({
+    await this.ensureOwnerFamilyId(user);
+
+    return this.buildAuthResponse(user);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                                REGISTER USER                               */
+  /* -------------------------------------------------------------------------- */
+
+  async registerUser(firebaseUser: any, body: any): Promise<any> {
+    const { uid, email } = firebaseUser;
+    const inviteToken = body?.inviteToken?.toString().trim() || null;
+
+    const existingUser = await this.userRepo.findOne({
+      where: { firebase_uid: uid },
+    });
+
+    if (existingUser && inviteToken) {
+      throw new BadRequestException(
+        'An account already exists for this invitation.',
+      );
+    }
+
+    if (existingUser) {
+      return this.buildAuthResponse(existingUser);
+    }
+
+    if (!email) {
+      throw new ForbiddenException('Email is required.');
+    }
+
+    return inviteToken
+      ? this.registerMember(uid, email, body?.name, inviteToken)
+      : this.registerOwner(uid, email, body?.name);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                               OWNER REGISTER                               */
+  /* -------------------------------------------------------------------------- */
+
+  private async registerOwner(
+    uid: string,
+    email: string,
+    name?: string,
+  ): Promise<any> {
+    let user = this.userRepo.create({
       firebase_uid: uid,
       email,
-      name: body?.name || null,
+      name: name || null,
       role: 'owner',
     });
 
-    const savedUser = await this.userRepo.save(user);
-    await this.syncFirebaseClaims(savedUser);
-    return savedUser;
+    user = await this.userRepo.save(user);
+
+    user.family_owner_id = user.id;
+    await this.userRepo.save(user);
+
+    return this.buildAuthResponse(user);
   }
 
-  private async syncFirebaseClaims(user: User): Promise<void> {
+  /* -------------------------------------------------------------------------- */
+  /*                              MEMBER REGISTER                               */
+  /* -------------------------------------------------------------------------- */
+
+  private async registerMember(
+    uid: string,
+    email: string,
+    name: string | undefined,
+    inviteToken: string,
+  ): Promise<any> {
+    const invite = await this.invitationsService.validateInviteForRegister(
+      inviteToken,
+      email,
+    );
+
+    let member = this.userRepo.create({
+      firebase_uid: uid,
+      email,
+      name: name || null,
+      role: 'member',
+    });
+
+    member = await this.userRepo.save(member);
+
+    const inviteResult =
+      await this.invitationsService.completeInviteForRegisteredUser(
+        invite,
+        member,
+      );
+    member.role = inviteResult.role as 'owner' | 'member';
+    member.family_owner_id = inviteResult.family_owner_id;
+
+    await this.userRepo.save(member);
+
+    return this.buildAuthResponse(member);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                          SHARED AUTH RESPONSE BUILDER                      */
+  /* -------------------------------------------------------------------------- */
+
+  private async buildAuthResponse(user: User) {
+    const payload = await this.authPayload(user);
+    await this.syncFirebaseClaims(user, payload.is_subscribed);
+    return payload;
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                             AUTH PAYLOAD LOGIC                             */
+  /* -------------------------------------------------------------------------- */
+
+  private async authPayload(user: User) {
+    const isSubscribed = await this.getEffectiveSubscription(user);
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      family_owner_id: user.family_owner_id,
+      is_subscribed: isSubscribed,
+    };
+  }
+
+  private async getEffectiveSubscription(user: User): Promise<boolean> {
+    if (user.role === 'owner') {
+      return Boolean(user.is_subscribed);
+    }
+
+    if (!user.family_owner_id) {
+      return false;
+    }
+
+    const owner = await this.userRepo.findOne({
+      where: { id: user.family_owner_id, role: 'owner' },
+    });
+
+    return Boolean(owner?.is_subscribed);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                         OWNER FAMILY ID SAFETY CHECK                       */
+  /* -------------------------------------------------------------------------- */
+
+  private async ensureOwnerFamilyId(user: User) {
+    if (user.role === 'owner' && !user.family_owner_id) {
+      user.family_owner_id = user.id;
+      await this.userRepo.save(user);
+    }
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /*                           FIREBASE CLAIM SYNC                              */
+  /* -------------------------------------------------------------------------- */
+
+  private async syncFirebaseClaims(
+    user: User,
+    effectiveSubscription: boolean,
+  ): Promise<void> {
     try {
       const userRecord = await admin.auth().getUser(user.firebase_uid);
-      const existingClaims = userRecord.customClaims || {};
-      const nextClaims: Record<string, unknown> = {
-        ...existingClaims,
-        role: user.role,
-        is_subscribed: Boolean(user.is_subscribed),
-      };
 
-      if (user.name) {
-        nextClaims.name = user.name;
-      }
+      const nextClaims = {
+        ...(userRecord.customClaims || {}),
+        role: user.role,
+        is_subscribed: Boolean(effectiveSubscription),
+        ...(user.name && { name: user.name }),
+      };
 
       await admin.auth().setCustomUserClaims(user.firebase_uid, nextClaims);
 
@@ -85,9 +212,9 @@ export class AuthService {
         });
       }
     } catch (error) {
-      console.error('Failed to sync Firebase user claims:', {
+      console.error('Failed to sync Firebase claims:', {
         uid: user.firebase_uid,
-        message: error?.message ?? error,
+        message: getErrorMessage(error),
       });
     }
   }

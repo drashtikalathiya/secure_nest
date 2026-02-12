@@ -28,6 +28,9 @@ export class User {
   @Column({ nullable: true })
   subscribed_id: string;
 
+  @Column({ nullable: true })
+  family_owner_id: string;
+
   @CreateDateColumn()
   created_at: Date;
 }

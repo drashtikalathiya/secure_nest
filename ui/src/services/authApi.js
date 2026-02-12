@@ -1,4 +1,21 @@
-const API_URL = "http://localhost:3001";
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3001";
+
+const parseApiResponse = async (res, fallbackMessage) => {
+  let data = null;
+
+  try {
+    data = await res.json();
+  } catch (error) {
+    if (!res.ok) throw new Error(fallbackMessage);
+    return null;
+  }
+
+  if (!res.ok || data?.success === false) {
+    throw new Error(data?.error || data?.message || fallbackMessage);
+  }
+
+  return data;
+};
 
 export const backendSignup = async (token, body) => {
   const res = await fetch(`${API_URL}/auth/register`, {
@@ -10,12 +27,7 @@ export const backendSignup = async (token, body) => {
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.message || "Signup failed");
-  }
-
-  return res.json();
+  return parseApiResponse(res, "Signup failed");
 };
 
 export const backendLogin = async (token) => {
@@ -26,10 +38,14 @@ export const backendLogin = async (token) => {
     },
   });
 
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.message || "Login failed");
-  }
+  return parseApiResponse(res, "Login failed");
+};
 
-  return res.json();
+export const getPostLoginPath = (authData) => {
+  const role = authData?.role;
+  const isSubscribed = Boolean(authData?.is_subscribed);
+
+  if (role === "member") return "/dashboard";
+  if (isSubscribed) return "/dashboard";
+  return "/subscription";
 };
