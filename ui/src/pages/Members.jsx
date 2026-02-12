@@ -1,16 +1,16 @@
 import {
   IconSend,
   IconSearch,
-  IconChevronDown,
   IconDotsVertical,
+  IconUserPlus,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getAuth } from "firebase/auth";
 import toast from "react-hot-toast";
 import PageHeader from "../components/common/PageHeader";
 import { ROLE_STYLES } from "../const/membersData";
 import { useAuth } from "../context/AuthContext";
 import { getFamilyMembers } from "../services/usersApi";
+import { auth } from "../services/firebase";
 import {
   cancelInvitation,
   createInvitation,
@@ -54,6 +54,28 @@ const getDefaultPermissions = (role) => ({
   delete: role === "Owner",
 });
 
+const formatTimeAgo = (value) => {
+  if (!value) return "Invitation pending";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Invitation pending";
+
+  const diffMs = Date.now() - date.getTime();
+  const minutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
+
+  if (minutes < 60) {
+    return `Invitation sent ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `Invitation sent ${hours} hour${hours === 1 ? "" : "s"} ago`;
+  }
+
+  const days = Math.floor(hours / 24);
+  return `Invitation sent ${days} day${days === 1 ? "" : "s"} ago`;
+};
+
 function Toggle({ checked, onToggle, disabled = false }) {
   return (
     <button
@@ -80,7 +102,6 @@ export default function Members() {
 
   const [search, setSearch] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("member");
   const [members, setMembers] = useState([]);
   const [pendingInvites, setPendingInvites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -97,6 +118,7 @@ export default function Members() {
       role: "Pending",
       status: "pending",
       expires_at: invite.expires_at,
+      created_at: invite.created_at,
     }));
 
     const allRows = [...normalizedMembers, ...normalizedInvites];
@@ -125,7 +147,6 @@ export default function Members() {
   }, [members]);
 
   const loadData = useCallback(async () => {
-    const auth = getAuth();
     if (!auth.currentUser) {
       setLoading(false);
       return;
@@ -160,10 +181,10 @@ export default function Members() {
 
     try {
       setInviteLoading(true);
-      const token = await getAuth().currentUser.getIdToken();
+      const token = await auth.currentUser.getIdToken();
       await createInvitation(token, {
         email: inviteEmail.trim(),
-        role: inviteRole,
+        role: "member",
       });
 
       toast.success("Invitation sent.");
@@ -178,7 +199,7 @@ export default function Members() {
 
   const handleResend = async (invitationId) => {
     try {
-      const token = await getAuth().currentUser.getIdToken();
+      const token = await auth.currentUser.getIdToken();
       setActionLoadingById((prev) => ({ ...prev, [invitationId]: true }));
       await resendInvitation(token, invitationId);
       toast.success("Invitation resent.");
@@ -192,7 +213,7 @@ export default function Members() {
 
   const handleCancel = async (invitationId) => {
     try {
-      const token = await getAuth().currentUser.getIdToken();
+      const token = await auth.currentUser.getIdToken();
       setActionLoadingById((prev) => ({ ...prev, [invitationId]: true }));
       await cancelInvitation(token, invitationId);
       toast.success("Invitation deleted.");
@@ -225,24 +246,14 @@ export default function Members() {
                 className="mt-2 w-full rounded-xl border border-slate-800/80 bg-slate-950/40 px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:border-sky-500/60 focus:outline-none"
               />
             </div>
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Initial Role
-              </label>
-              <div className="relative mt-2">
-                <select
-                  value={inviteRole}
-                  onChange={(event) => setInviteRole(event.target.value)}
-                  className="w-full cursor-pointer appearance-none rounded-xl border border-slate-800/80 bg-slate-950/40 px-4 py-2.5 pr-9 text-sm text-slate-200 focus:border-sky-500/60 focus:outline-none"
-                >
-                  <option value="member">Member</option>
-                </select>
-                <IconChevronDown
-                  size={14}
-                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
-                />
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Initial Role
+                </label>
+                <div className="mt-2 rounded-xl border border-slate-800/80 bg-slate-950/40 px-4 py-2.5 text-sm font-medium text-slate-200">
+                  Member
+                </div>
               </div>
-            </div>
             <div className="flex items-end">
               <button
                 type="button"
@@ -296,8 +307,10 @@ export default function Members() {
             className="flex flex-col gap-4 rounded-2xl border border-slate-800/90 bg-slate-900/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex items-start justify-between gap-3 sm:items-center">
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-slate-200">
+                <div className="flex items-center gap-3">
+                <div
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-500/60 bg-transparent text-sm font-semibold text-slate-100"
+                >
                   {member.initials}
                 </div>
                 <div>
@@ -390,16 +403,19 @@ export default function Members() {
               key={invite.id}
               className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/40 px-5 py-4"
             >
-              <div>
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-500/60 bg-transparent text-slate-100">
+                  <IconUserPlus size={16} />
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-semibold text-slate-200">{invite.email}</p>
                   <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[9px] font-semibold uppercase text-amber-300">
                     Pending
                   </span>
+                  <p className="w-full text-xs text-slate-500">
+                    {formatTimeAgo(invite.created_at)}
+                  </p>
                 </div>
-                <p className="text-xs text-slate-500">
-                  Expires {new Date(invite.expires_at).toLocaleString()}
-                </p>
               </div>
               {isOwner ? (
                 <div className="flex items-center gap-3 text-xs">
@@ -417,7 +433,7 @@ export default function Members() {
                     disabled={isActionLoading}
                     className="text-rose-400 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Delete
+                    Cancel
                   </button>
                 </div>
               ) : null}

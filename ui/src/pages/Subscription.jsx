@@ -2,7 +2,7 @@ import { useState } from "react";
 import { IconShieldCheck, IconClock } from "@tabler/icons-react";
 import PlanCard from "../components/PlanCard";
 import { createCheckoutSession } from "../services/billingApi";
-import { getAuth } from "firebase/auth";
+import { auth } from "../services/firebase";
 const PLANS = [
   {
     id: "small",
@@ -37,7 +37,7 @@ const PLANS = [
 
 const handleSubscribe = async (priceId) => {
   try {
-    const token = await getAuth().currentUser.getIdToken();
+    const token = await auth.currentUser.getIdToken();
     const { url } = await createCheckoutSession(priceId, token);
 
     window.location.href = url;

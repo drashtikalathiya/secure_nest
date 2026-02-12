@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { getAuth, signOut } from "firebase/auth";
+import { signOut } from "firebase/auth";
 import toast from "react-hot-toast";
 import {
   acceptInvitation,
   validateInvitationToken,
 } from "../services/invitationsApi";
+import { auth } from "../services/firebase";
 
 export default function AcceptInvitation() {
   const [searchParams] = useSearchParams();
@@ -29,7 +30,6 @@ export default function AcceptInvitation() {
           return;
         }
 
-        const auth = getAuth();
         const currentUser = auth.currentUser;
         const invitedEmail = String(invite.email || "").trim().toLowerCase();
         const currentEmail = String(currentUser?.email || "")

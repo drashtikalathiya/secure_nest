@@ -1,16 +1,54 @@
 import { IconArrowBadgeRight } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import PageHeader from "../components/common/PageHeader";
 import { VAULT_SECTIONS } from "../const/dashboardData";
 import { PAGE_META } from "../const/pageMeta";
-import { FAMILY_MEMBERS } from "../const/membersData";
+import { getFamilyMembers } from "../services/usersApi";
+import { auth } from "../services/firebase";
+
+const AVATAR_STYLES = [
+  "bg-gradient-to-br from-sky-400/70 to-indigo-500/70",
+  "bg-gradient-to-br from-amber-400/70 to-rose-500/70",
+  "bg-gradient-to-br from-emerald-400/70 to-teal-500/70",
+  "bg-gradient-to-br from-fuchsia-400/70 to-violet-500/70",
+];
+
+const getInitial = (member) => {
+  const source = String(member?.name || member?.email || "").trim();
+  if (!source) return "?";
+  return source[0].toUpperCase();
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [members, setMembers] = useState([]);
   const displayName = user?.name || user?.email?.split("@")[0];
-  const activeMembers = FAMILY_MEMBERS?.length;
   const subtitle = PAGE_META["/dashboard"]?.subtitle;
+  const activeMembers = members.length;
+  const visibleMembers = members.slice(0, 4);
+  const overflowMembersCount = Math.max(activeMembers - 4, 0);
+
+  useEffect(() => {
+    const loadActiveMembers = async () => {
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        setMembers([]);
+        return;
+      }
+
+      try {
+        const token = await currentUser.getIdToken();
+        const data = await getFamilyMembers(token);
+        setMembers(Array.isArray(data?.data) ? data.data : []);
+      } catch (error) {
+        setMembers([]);
+      }
+    };
+
+    loadActiveMembers();
+  }, []);
 
   return (
     <div>
@@ -20,19 +58,29 @@ export default function Dashboard() {
         right={
           <div className="flex items-center gap-3 rounded-2xl border border-slate-800/80 bg-slate-900/70 px-3 py-2 text-xs text-slate-300">
             <div className="flex -space-x-2">
-              <div className="h-7 w-7 rounded-full bg-gradient-to-br from-sky-400/70 to-indigo-500/70 ring-2 ring-slate-900/80" />
-              <div className="h-7 w-7 rounded-full bg-gradient-to-br from-amber-400/70 to-rose-500/70 ring-2 ring-slate-900/80" />
-              <div className="h-7 w-7 rounded-full bg-gradient-to-br from-emerald-400/70 to-teal-500/70 ring-2 ring-slate-900/80" />
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-800/80 text-[10px] font-semibold text-slate-200 ring-2 ring-slate-900/80">
-                +2
-              </div>
+              {visibleMembers.map((member, index) => (
+                <div
+                  key={member.id || member.email || index}
+                  className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold text-white ring-2 ring-slate-900/80 ${
+                    AVATAR_STYLES[index % AVATAR_STYLES.length]
+                  }`}
+                  title={member.name || member.email}
+                >
+                  {getInitial(member)}
+                </div>
+              ))}
+              {overflowMembersCount > 0 ? (
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-800/80 text-[10px] font-semibold text-slate-200 ring-2 ring-slate-900/80">
+                  +{overflowMembersCount}
+                </div>
+              ) : null}
             </div>
             <div className="leading-tight">
               <p className="text-[10px] uppercase tracking-wide text-slate-400">
                 Active Members
               </p>
               <p className="text-xs font-semibold text-slate-200">
-                {activeMembers} Family Members
+                {activeMembers} Family Member{activeMembers === 1 ? "" : "s"}
               </p>
             </div>
           </div>

@@ -14,15 +14,24 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     let retryTimer = null;
+    let nullUserTimer = null;
 
     const syncUserSession = async (currentUser, version, retryCount = 0) => {
       if (version !== authVersionRef.current) return;
 
-      // No user → clear state
+      // No user can be transient during auth restore on refresh.
       if (!currentUser) {
-        setUser(null);
-        setIsSubscribed(false);
-        setLoading(false);
+        setLoading(true);
+        nullUserTimer = setTimeout(() => {
+          if (version !== authVersionRef.current) return;
+          if (auth.currentUser) {
+            syncUserSession(auth.currentUser, version);
+            return;
+          }
+          setUser(null);
+          setIsSubscribed(false);
+          setLoading(false);
+        }, 250);
         return;
       }
 
@@ -82,6 +91,14 @@ export const AuthProvider = ({ children }) => {
     };
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+      if (nullUserTimer) {
+        clearTimeout(nullUserTimer);
+        nullUserTimer = null;
+      }
       authVersionRef.current += 1;
       const version = authVersionRef.current;
       syncUserSession(currentUser, version);
@@ -89,13 +106,14 @@ export const AuthProvider = ({ children }) => {
 
     return () => {
       if (retryTimer) clearTimeout(retryTimer);
+      if (nullUserTimer) clearTimeout(nullUserTimer);
       unsubscribe();
     };
   }, []);
 
   return (
     <AuthContext.Provider value={{ user, isSubscribed, loading }}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };
