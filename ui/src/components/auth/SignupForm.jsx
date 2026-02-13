@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  IconCamera,
+  IconPlus,
   IconUser,
   IconMail,
   IconEye,
@@ -7,8 +9,12 @@ import {
   IconLogin2,
 } from "@tabler/icons-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { firebaseSignup } from "../../services/firebaseAuth";
+import {
+  firebaseSignup,
+  updateFirebaseUserProfile,
+} from "../../services/firebaseAuth";
 import { backendSignup, getPostLoginPath } from "../../services/authApi";
+import { uploadImageToCloudinary } from "../../services/cloudinaryApi";
 import { validateSignup } from "../../utils/validators";
 import toast from "react-hot-toast";
 
@@ -23,10 +29,31 @@ export default function SignupForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [profileImage, setProfileImage] = useState(null);
+  const [profilePreview, setProfilePreview] = useState("");
   const [error, setError] = useState({});
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    return () => {
+      if (profilePreview) {
+        URL.revokeObjectURL(profilePreview);
+      }
+    };
+  }, [profilePreview]);
+
+  const profileInitials = useMemo(() => {
+    const source = fullName.trim();
+    if (!source) return "";
+    return source
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() || "")
+      .join("");
+  }, [fullName]);
 
   const clearFieldError = (field) => {
     setError((prev) => {
@@ -56,12 +83,28 @@ export default function SignupForm() {
     try {
       setLoading(true);
       setError({});
+      let uploadedPhotoUrl = null;
+
+      if (profileImage) {
+        const uploadRes = await uploadImageToCloudinary(profileImage);
+        uploadedPhotoUrl = uploadRes.secure_url;
+      }
 
       const firebaseUser = await firebaseSignup(email, password);
+
+      const profilePayload = {
+        displayName: fullName.trim(),
+      };
+      if (uploadedPhotoUrl) {
+        profilePayload.photoURL = uploadedPhotoUrl;
+      }
+      await updateFirebaseUserProfile(firebaseUser, profilePayload);
+
       const idToken = await firebaseUser.getIdToken();
 
       const { data } = await backendSignup(idToken, {
         name: fullName,
+        photo_url: uploadedPhotoUrl,
         inviteToken,
       });
 
@@ -83,6 +126,30 @@ export default function SignupForm() {
     }
   };
 
+  const handleProfileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const isImage = file.type.startsWith("image/");
+    if (!isImage) {
+      toast.error("Please select a valid image file.");
+      return;
+    }
+
+    const maxSizeInBytes = 2 * 1024 * 1024;
+    if (file.size > maxSizeInBytes) {
+      toast.error("Profile image must be 2MB or smaller.");
+      return;
+    }
+
+    if (profilePreview) {
+      URL.revokeObjectURL(profilePreview);
+    }
+    const nextPreview = URL.createObjectURL(file);
+    setProfileImage(file);
+    setProfilePreview(nextPreview);
+  };
+
   return (
     <>
       <div>
@@ -93,6 +160,49 @@ export default function SignupForm() {
       </div>
 
       <form className="space-y-4" onSubmit={handleSignup}>
+        <div className="flex flex-col items-center justify-center gap-2 py-2">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="group relative flex h-24 w-24 items-center justify-center rounded-full border border-dashed border-[#36527f] bg-[#0f1f3b] text-[#91a9cf] transition hover:border-primary-soft hover:text-white"
+              aria-label="Upload profile photo"
+            >
+              {profilePreview ? (
+                <img
+                  src={profilePreview}
+                  alt="Profile preview"
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : profileInitials ? (
+                <span className="text-2xl font-bold text-slate-200">
+                  {profileInitials}
+                </span>
+              ) : (
+                <IconCamera size={24} />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 transition hover:bg-primary-strong"
+              aria-label="Add profile photo"
+            >
+              <IconPlus size={16} />
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleProfileChange}
+              className="hidden"
+            />
+          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            Add Profile Photo
+          </p>
+        </div>
+
         <div>
           <label className="text-sm text-gray-400">Full Name</label>
           <div className="relative mt-1">

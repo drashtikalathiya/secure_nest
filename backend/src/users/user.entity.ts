@@ -19,6 +19,9 @@ export class User {
   @Column({ nullable: true })
   name: string;
 
+  @Column({ nullable: true })
+  profile_photo_url: string;
+
   @Column({ default: 'owner' })
   role: 'owner' | 'member';
 

@@ -17,8 +17,11 @@ export class AuthController {
       return sendSuccess('Login successful', {
         id: user.id,
         email: user.email,
+        name: user.name,
+        profile_photo_url: user.profile_photo_url,
         role: user.role,
         is_subscribed: user.is_subscribed,
+        family_owner_id: user.family_owner_id,
       });
     } catch (error) {
       return sendError('Authentication failed', getErrorMessage(error));
@@ -34,6 +37,8 @@ export class AuthController {
       return sendSuccess('User registered successfully', {
         id: user.id,
         email: user.email,
+        name: user.name,
+        profile_photo_url: user.profile_photo_url,
         role: user.role,
         is_subscribed: user.is_subscribed,
         family_owner_id: user.family_owner_id,

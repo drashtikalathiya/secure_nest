@@ -58,6 +58,11 @@ export const AuthProvider = ({ children }) => {
             backendUser.name ||
             claims.name ||
             currentUser.email?.split("@")?.[0],
+          profile_photo_url:
+            backendUser.profile_photo_url ||
+            claims.profile_photo_url ||
+            currentUser.photoURL ||
+            "",
           role: backendUser.role || claims.role || null,
           is_subscribed: resolvedSubscription,
           family_owner_id: backendUser.family_owner_id || null,

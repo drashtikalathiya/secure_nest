@@ -38,6 +38,10 @@ export class AuthService {
   async registerUser(firebaseUser: any, body: any): Promise<any> {
     const { uid, email } = firebaseUser;
     const inviteToken = body?.inviteToken?.toString().trim() || null;
+    const photoUrl =
+      typeof body?.photo_url === 'string' && body.photo_url.trim()
+        ? body.photo_url.trim()
+        : null;
 
     const existingUser = await this.userRepo.findOne({
       where: { firebase_uid: uid },
@@ -58,19 +62,21 @@ export class AuthService {
     }
 
     return inviteToken
-      ? this.registerMember(uid, email, body?.name, inviteToken)
-      : this.registerOwner(uid, email, body?.name);
+      ? this.registerMember(uid, email, body?.name, inviteToken, photoUrl)
+      : this.registerOwner(uid, email, body?.name, photoUrl);
   }
 
   private async registerOwner(
     uid: string,
     email: string,
     name?: string,
+    profilePhotoUrl?: string | null,
   ): Promise<any> {
     let user = this.userRepo.create({
       firebase_uid: uid,
       email,
       name: name || null,
+      profile_photo_url: profilePhotoUrl || null,
       role: 'owner',
       permission_view: true,
       permission_edit: true,
@@ -90,6 +96,7 @@ export class AuthService {
     email: string,
     name: string | undefined,
     inviteToken: string,
+    profilePhotoUrl?: string | null,
   ): Promise<any> {
     const invite = await this.invitationsService.validateInviteForRegister(
       inviteToken,
@@ -100,6 +107,7 @@ export class AuthService {
       firebase_uid: uid,
       email,
       name: name || null,
+      profile_photo_url: profilePhotoUrl || null,
       role: 'member',
       permission_view: true,
       permission_edit: false,
@@ -134,6 +142,7 @@ export class AuthService {
       id: user.id,
       email: user.email,
       name: user.name,
+      profile_photo_url: user.profile_photo_url,
       role: user.role,
       family_owner_id: user.family_owner_id,
       is_subscribed: isSubscribed,
@@ -175,13 +184,18 @@ export class AuthService {
         role: user.role,
         is_subscribed: Boolean(effectiveSubscription),
         ...(user.name && { name: user.name }),
+        ...(user.profile_photo_url && { profile_photo_url: user.profile_photo_url }),
       };
 
       await admin.auth().setCustomUserClaims(user.firebase_uid, nextClaims);
 
-      if (user.name && userRecord.displayName !== user.name) {
+      if (
+        (user.name && userRecord.displayName !== user.name) ||
+        (user.profile_photo_url && userRecord.photoURL !== user.profile_photo_url)
+      ) {
         await admin.auth().updateUser(user.firebase_uid, {
-          displayName: user.name,
+          ...(user.name ? { displayName: user.name } : {}),
+          ...(user.profile_photo_url ? { photoURL: user.profile_photo_url } : {}),
         });
       }
     } catch (error) {
