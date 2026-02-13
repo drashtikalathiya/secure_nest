@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { BillingModule } from './billing/billing.module';
 import { UsersModule } from './users/users.module';
 import { InvitationsModule } from './invitations/invitations.module';
+import { ContactsModule } from './contacts/contacts.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { InvitationsModule } from './invitations/invitations.module';
     BillingModule,
     UsersModule,
     InvitationsModule,
+    ContactsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
