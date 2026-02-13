@@ -194,7 +194,7 @@ export default function PasswordFormDrawer({
           <button
             type="submit"
             form="add-password-form"
-            className="flex-1 rounded-xl bg-primary py-2 text-sm font-semibold text-white"
+            className="flex-1 rounded-xl bg-primary-strong py-2 text-sm font-semibold text-white"
           >
             Save Item
           </button>

@@ -118,7 +118,7 @@ export default function Passwords() {
           <button
             type="button"
             onClick={() => setIsAddOpen(true)}
-            className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_24px_-18px_rgba(59,130,246,0.7)]"
+            className="flex items-center gap-2 rounded-xl bg-primary-strong px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_24px_-18px_rgba(59,130,246,0.7)]"
           >
             <IconPlus size={16} />
             Add Password
@@ -179,7 +179,10 @@ export default function Passwords() {
                 })
               ) : (
                 <tr className="border-b border-slate-800/60">
-                  <td className="px-5 py-8 text-center text-sm text-slate-500" colSpan={6}>
+                  <td
+                    className="px-5 py-8 text-center text-sm text-slate-500"
+                    colSpan={6}
+                  >
                     No passwords found.
                   </td>
                 </tr>

@@ -321,7 +321,7 @@ export default function Members() {
                 type="button"
                 onClick={handleSendInvite}
                 disabled={inviteLoading}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_-18px_rgba(59,130,246,0.7)] disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary-strong px-5 py-2.5 text-sm font-semibold text-white shadow-[0_12px_24px_-18px_rgba(59,130,246,0.7)] disabled:cursor-not-allowed disabled:opacity-60 lg:w-auto"
               >
                 <IconSend size={16} />
                 {inviteLoading ? "Sending..." : "Send Invitation"}

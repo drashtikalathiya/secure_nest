@@ -198,7 +198,7 @@ export default function SignupForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full h-11 bg-primary rounded-md font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+          className="w-full h-11 bg-primary-strong rounded-md font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {loading ? (
             "Creating Account..."

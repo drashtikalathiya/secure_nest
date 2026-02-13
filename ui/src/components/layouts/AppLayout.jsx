@@ -14,9 +14,7 @@ import { useAuth } from "../../context/AuthContext";
 
 function BrandBlock({ className = "" }) {
   return (
-    <div
-      className={`flex items-center gap-3 rounded-2xl bg-slate-900/60 px-4 py-3 ${className}`}
-    >
+    <div className={`flex items-center gap-3 py-3 ${className}`}>
       <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-500/20 text-sky-300">
         <IconShieldLock size={22} stroke={2} />
       </div>
@@ -83,9 +81,9 @@ export default function AppLayout() {
   };
 
   return (
-    <div className="h-screen bg-background-dark text-slate-100">
+    <div className="app-shell h-screen bg-background-dark text-slate-100">
       <div className="flex h-screen w-full overflow-hidden">
-        <aside className="hidden h-screen w-64 flex-col border-r border-slate-800/70 bg-background-dark px-5 py-4 lg:flex lg:w-72">
+        <aside className="hidden h-screen w-64 flex-col border-r border-slate-800/70 px-5 py-4 lg:flex lg:w-72">
           <BrandBlock />
 
           <div className="mt-7 space-y-2">

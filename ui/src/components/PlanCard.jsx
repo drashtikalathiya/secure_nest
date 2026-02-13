@@ -12,7 +12,7 @@ export default function PlanCard({ plan, selected, onSelect, onSubscribe }) {
         }`}
     >
       {plan.popular && (
-        <span className="absolute top-4 right-4 text-xs bg-primary text-white px-3 py-1 rounded-full">
+        <span className="absolute top-4 right-4 text-xs bg-primary-strong text-white px-3 py-1 rounded-full">
           MOST POPULAR
         </span>
       )}
@@ -51,7 +51,7 @@ export default function PlanCard({ plan, selected, onSelect, onSubscribe }) {
         className={`w-full h-11 mt-auto rounded-md font-semibold transition text-sm
           ${
             selected
-              ? "bg-primary hover:bg-primary/90 opacity-100"
+              ? "bg-primary-strong hover:bg-primary/90 opacity-100"
               : "opacity-0 pointer-events-none"
           }`}
       >
