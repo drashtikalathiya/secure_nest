@@ -1,4 +1,4 @@
-import { IconArrowBadgeRight } from "@tabler/icons-react";
+import { IconArrowBadgeRight, IconUser } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -7,19 +7,6 @@ import { VAULT_SECTIONS } from "../const/dashboardData";
 import { PAGE_META } from "../const/pageMeta";
 import { getFamilyMembers } from "../services/usersApi";
 import { auth } from "../services/firebase";
-
-const AVATAR_STYLES = [
-  "bg-gradient-to-br from-sky-400/70 to-indigo-500/70",
-  "bg-gradient-to-br from-amber-400/70 to-rose-500/70",
-  "bg-gradient-to-br from-emerald-400/70 to-teal-500/70",
-  "bg-gradient-to-br from-fuchsia-400/70 to-violet-500/70",
-];
-
-const getInitial = (member) => {
-  const source = String(member?.name || member?.email || "").trim();
-  if (!source) return "?";
-  return source[0].toUpperCase();
-};
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -58,17 +45,25 @@ export default function Dashboard() {
         right={
           <div className="flex items-center gap-3 rounded-2xl border border-slate-800/80 bg-slate-900/70 px-3 py-2 text-xs text-slate-300">
             <div className="flex -space-x-2">
-              {visibleMembers.map((member, index) => (
-                <div
-                  key={member.id || member.email || index}
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold text-white ring-2 ring-slate-900/80 ${
-                    AVATAR_STYLES[index % AVATAR_STYLES.length]
-                  }`}
-                  title={member.name || member.email}
-                >
-                  {getInitial(member)}
-                </div>
-              ))}
+              {visibleMembers.map((member, index) =>
+                member?.profile_photo_url ? (
+                  <img
+                    key={member.id || member.email || index}
+                    src={member.profile_photo_url}
+                    alt={member.name || member.email || "Member"}
+                    className="h-7 w-7 rounded-full object-cover ring-2 ring-slate-900/80"
+                    title={member.name || member.email}
+                  />
+                ) : (
+                  <div
+                    key={member.id || member.email || index}
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-800/80 text-slate-300 ring-2 ring-slate-900/80"
+                    title={member.name || member.email}
+                  >
+                    <IconUser size={12} />
+                  </div>
+                ),
+              )}
               {overflowMembersCount > 0 ? (
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-800/80 text-[10px] font-semibold text-slate-200 ring-2 ring-slate-900/80">
                   +{overflowMembersCount}

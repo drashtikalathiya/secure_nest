@@ -181,7 +181,15 @@ export default function AppLayout() {
                 <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800/80 bg-slate-900/50 text-slate-200">
                   <IconBell size={18} />
                 </button>
-                <button className="flex items-center gap-3 rounded-2xl border border-slate-800/80 bg-slate-900/60 px-3 py-2 text-left">
+                <button className="flex items-center gap-3 px-3 py-2 text-left border-l border-slate-800/80">
+                  <div className="hidden md:block">
+                    <p className="text-xs font-semibold text-white">
+                      {displayName}
+                    </p>
+                    <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                      {roleLabel}
+                    </p>
+                  </div>
                   {user?.profile_photo_url ? (
                     <img
                       src={user.profile_photo_url}
@@ -191,14 +199,6 @@ export default function AppLayout() {
                   ) : (
                     <div className="h-9 w-9 rounded-full bg-gradient-to-br from-sky-400/70 to-indigo-500/70" />
                   )}
-                  <div className="hidden md:block">
-                    <p className="text-xs font-semibold text-white">
-                      {displayName}
-                    </p>
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400">
-                      {roleLabel}
-                    </p>
-                  </div>
                 </button>
               </div>
             </div>
