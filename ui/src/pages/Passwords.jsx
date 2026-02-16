@@ -1,9 +1,10 @@
 import {
-  IconChevronLeft,
-  IconChevronRight,
+  IconLayoutGrid,
   IconPlus,
+  IconSearch,
+  IconStar,
 } from "@tabler/icons-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import PageHeader from "../components/common/PageHeader";
 import PasswordFormDrawer from "../components/password/PasswordFormDrawer";
 import PasswordItem from "../components/password/PasswordItem";
@@ -13,36 +14,34 @@ import {
   PASSWORD_INITIAL_CARDS,
 } from "../const/passwordsData";
 
-const getSecurityLevel = (password = "") => {
-  let score = 0;
-  if (password.length >= 8) score += 1;
-  if (password.length >= 12) score += 1;
-  if (/[A-Z]/.test(password)) score += 1;
-  if (/[a-z]/.test(password)) score += 1;
-  if (/\d/.test(password)) score += 1;
-  if (/[^A-Za-z0-9]/.test(password)) score += 1;
-
-  if (score >= 6) return "Excellent";
-  if (score >= 5) return "Strong";
-  if (score >= 3) return "Moderate";
-  return "Weak";
-};
+const FAMILY_VISIBILITY_OPTIONS = [
+  { id: "sarah", name: "Sarah Jenkins", relation: "Wife" },
+  { id: "john", name: "John Doe", relation: "Brother" },
+  { id: "emily", name: "Emily Jenkins", relation: "Daughter" },
+];
 
 export default function Passwords() {
   const [cards, setCards] = useState(PASSWORD_INITIAL_CARDS);
   const [revealed, setRevealed] = useState({});
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All Items");
-  const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 5;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [favoriteKeys, setFavoriteKeys] = useState(() => {
+    const defaults = {};
+    PASSWORD_INITIAL_CARDS.slice(0, 2).forEach((item) => {
+      defaults[`${item.name}-${item.value}`] = true;
+    });
+    return defaults;
+  });
   const [form, setForm] = useState({
     name: "",
-    category: PASSWORD_CATEGORY_OPTIONS[0],
+    category: PASSWORD_CATEGORY_OPTIONS[0] || "Work",
+    websiteUrl: "",
     value: "",
     password: "",
-    notes: "",
-    owner: "Alexander",
-    access: "Full",
+    visibility: "family", // "private" | "family" | "specific"
+    sharedWith: ["sarah", "emily"],
   });
 
   const handleCopy = async (value) => {
@@ -60,60 +59,69 @@ export default function Passwords() {
   const handleSave = (event) => {
     event.preventDefault();
     if (!form.name.trim()) return;
+
     const newCard = {
       name: form.name.trim(),
       category: form.category,
+      websiteUrl: form.websiteUrl.trim(),
       label: form.value.includes("@") ? "EMAIL" : "USERNAME",
       value: form.value.trim(),
       password: form.password || "password123",
-      notes: form.notes,
-      access: form.access === "Full" ? "Shared" : "Only Owner",
+      access: form.visibility === "private" ? "Only Owner" : "Shared",
     };
+
     setCards((prev) => [newCard, ...prev]);
     setForm({
       name: "",
-      category: PASSWORD_CATEGORY_OPTIONS[0],
+      category: PASSWORD_CATEGORY_OPTIONS[0] || "Work",
+      websiteUrl: "",
       value: "",
       password: "",
-      notes: "",
-      owner: "Alexander",
-      access: "Full",
+      visibility: "family",
+      sharedWith: ["sarah", "emily"],
     });
     setIsAddOpen(false);
   };
 
-  const filteredCards = useMemo(() => {
+  const toggleFavorite = (rowKey) => {
+    setFavoriteKeys((prev) => ({
+      ...prev,
+      [rowKey]: !prev[rowKey],
+    }));
+  };
+
+  const categoryCounts = useMemo(() => {
+    const counts = { "All Items": cards.length };
+    PASSWORD_CATEGORY_OPTIONS.forEach((option) => {
+      counts[option] = cards.filter((item) => item.category === option).length;
+    });
+    return counts;
+  }, [cards]);
+
+  const categoryFilteredCards = useMemo(() => {
     if (activeCategory === "All Items") return cards;
     return cards.filter((item) => item.category === activeCategory);
   }, [activeCategory, cards]);
 
-  const totalItems = filteredCards.length;
-  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
-  const desktopCards = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredCards.slice(start, start + PAGE_SIZE);
-  }, [currentPage, filteredCards]);
+  const filteredCards = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeCategory]);
+    return categoryFilteredCards.filter((item) => {
+      const rowKey = `${item.name}-${item.value}`;
+      const matchesSearch = !query || item.name.toLowerCase().includes(query);
+      const matchesFavorite = !favoritesOnly || Boolean(favoriteKeys[rowKey]);
 
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
+      return matchesSearch && matchesFavorite;
+    });
+  }, [categoryFilteredCards, favoriteKeys, favoritesOnly, searchQuery]);
 
-  const strength = useMemo(() => {
-    const score = Math.min(100, form.password.length * 10 + 30);
-    return Math.max(20, score);
-  }, [form.password]);
+  const categoryItems = ["All Items", ...PASSWORD_CATEGORY_OPTIONS];
 
   return (
-    <section className="space-y-5">
+    <section>
       <PageHeader
         title="Passwords"
-        subtitle="Table view for fast password access and control."
+        subtitle="Favorite passwords with quick icon actions."
         right={
           <button
             type="button"
@@ -126,114 +134,117 @@ export default function Passwords() {
         }
       />
 
-      <div className="flex flex-wrap gap-2">
-        {["All Items", ...PASSWORD_CATEGORY_OPTIONS].map((option) => {
-          const CategoryIcon = PASSWORD_CATEGORY_ICONS[option];
-          const isActive = activeCategory === option;
-          return (
+      <div className="grid items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)] mt-4">
+        <aside className="rounded-2xl border border-slate-800/80 bg-dashboard-card p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+            Categories
+          </p>
+          <div className="mt-3 space-y-1.5">
+            {categoryItems.map((item) => {
+              const CategoryIcon =
+                item === "All Items"
+                  ? IconLayoutGrid
+                  : PASSWORD_CATEGORY_ICONS[item];
+              const isActive = activeCategory === item;
+
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setActiveCategory(item)}
+                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs transition ${
+                    isActive
+                      ? "bg-sky-500/20 text-sky-100"
+                      : "text-slate-400 hover:bg-slate-900/80 hover:text-slate-200"
+                  }`}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    {CategoryIcon ? <CategoryIcon size={14} /> : null}
+                    {item}
+                  </span>
+                  <span className="rounded-full bg-slate-900/90 px-2 py-0.5 text-[10px] text-slate-400">
+                    {categoryCounts[item] || 0}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+
+        <div className="p-4 sm:p-5 lg:h-[calc(100vh-210px)] lg:overflow-y-auto">
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full sm:max-w-xs">
+              <IconSearch
+                size={14}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+              />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search Service Name..."
+                className="w-full rounded-lg border border-slate-800/80 bg-slate-900/70 py-3 pl-9 pr-3 text-xs text-slate-200 placeholder:text-slate-500 focus:border-sky-500/60 focus:outline-none"
+              />
+            </div>
             <button
-              key={option}
               type="button"
-              onClick={() => setActiveCategory(option)}
-              className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold transition ${
-                isActive
-                  ? "border-sky-400/50 bg-sky-500/20 text-sky-100"
-                  : "border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-500"
+              onClick={() => setFavoritesOnly((prev) => !prev)}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                favoritesOnly
+                  ? "border-amber-500/40 bg-amber-500/15 text-amber-300"
+                  : "border-slate-800/80 bg-slate-900/70 text-slate-300 hover:text-white"
               }`}
             >
-              {CategoryIcon ? <CategoryIcon size={14} stroke={2} /> : null}
-              {option}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="hidden min-h-[460px] lg:flex flex-col overflow-hidden rounded-2xl border border-slate-800/80 bg-slate-900/60">
-        <div className="overflow-x-auto flex-1">
-          <table className="min-w-[940px] w-full text-left">
-            <thead className="bg-slate-900/80">
-              <tr className="border-b border-slate-800/80 text-[11px] uppercase tracking-[0.08em] text-slate-500">
-                <th className="px-5 py-4 font-semibold">Service</th>
-                <th className="px-5 py-4 font-semibold">Username / Email</th>
-                <th className="px-5 py-4 font-semibold">Password</th>
-                <th className="px-5 py-4 font-semibold">Security</th>
-                <th className="px-5 py-4 font-semibold">Access</th>
-                <th className="px-5 py-4 font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {desktopCards.length > 0 ? (
-                desktopCards.map((item) => {
-                  const rowKey = `${item.name}-${item.value}`;
-                  return (
-                    <PasswordItem
-                      key={rowKey}
-                      item={item}
-                      revealed={revealed}
-                      setRevealed={setRevealed}
-                      handleCopy={handleCopy}
-                      getSecurityLevel={getSecurityLevel}
-                      variant="row"
-                    />
-                  );
-                })
-              ) : (
-                <tr className="border-b border-slate-800/60">
-                  <td
-                    className="px-5 py-8 text-center text-sm text-slate-500"
-                    colSpan={6}
-                  >
-                    No passwords found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex items-center justify-between gap-3 border-t border-slate-800/70 px-5 py-4 text-sm text-slate-500">
-          <p>
-            Showing {desktopCards.length} of {totalItems} passwords
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800/70 bg-slate-900/70 text-slate-400 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label="Previous page"
-            >
-              <IconChevronLeft size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-              }
-              disabled={currentPage === totalPages}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-800/70 bg-slate-900/70 text-slate-400 transition hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-              aria-label="Next page"
-            >
-              <IconChevronRight size={16} />
+              <IconStar
+                size={13}
+                fill={favoritesOnly ? "currentColor" : "none"}
+              />
+              Favorites
             </button>
           </div>
+
+          <div className="hidden space-y-3 lg:block">
+            {filteredCards.length > 0 ? (
+              filteredCards.map((item) => {
+                const rowKey = `${item.name}-${item.value}`;
+                return (
+                  <PasswordItem
+                    key={rowKey}
+                    item={item}
+                    revealed={revealed}
+                    setRevealed={setRevealed}
+                    handleCopy={handleCopy}
+                    isFavorite={Boolean(favoriteKeys[rowKey])}
+                    onToggleFavorite={() => toggleFavorite(rowKey)}
+                    variant="list"
+                  />
+                );
+              })
+            ) : (
+              <div className="rounded-xl border border-slate-800/70 bg-slate-900/40 px-4 py-10 text-center text-sm text-slate-500">
+                No passwords found.
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4 lg:hidden">
+            {filteredCards.map((item) => {
+              const rowKey = `${item.name}-${item.value}`;
+              return (
+                <PasswordItem
+                  key={rowKey}
+                  item={item}
+                  revealed={revealed}
+                  setRevealed={setRevealed}
+                  handleCopy={handleCopy}
+                  isFavorite={Boolean(favoriteKeys[rowKey])}
+                  onToggleFavorite={() => toggleFavorite(rowKey)}
+                  variant="card"
+                />
+              );
+            })}
+          </div>
         </div>
-      </div>
-      {/* Mobile View */}
-      <div className="space-y-4 lg:hidden">
-        {filteredCards.map((item) => {
-          const rowKey = `${item.name}-${item.value}`;
-          return (
-            <PasswordItem
-              key={rowKey}
-              item={item}
-              revealed={revealed}
-              setRevealed={setRevealed}
-              handleCopy={handleCopy}
-              getSecurityLevel={getSecurityLevel}
-              variant="card"
-            />
-          );
-        })}
       </div>
 
       <PasswordFormDrawer
@@ -243,7 +254,7 @@ export default function Passwords() {
         onChange={handleChange}
         onSubmit={handleSave}
         setForm={setForm}
-        strength={strength}
+        familyOptions={FAMILY_VISIBILITY_OPTIONS}
         categoryOptions={PASSWORD_CATEGORY_OPTIONS}
       />
     </section>

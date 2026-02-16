@@ -81,7 +81,7 @@ export default function Dashboard() {
           </div>
         }
       />
-      <section className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-5">
+      <section className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-5 mt-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">Vault Overview</h2>
           <button className="text-xs font-semibold text-sky-400 hover:text-sky-300">
