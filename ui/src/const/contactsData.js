@@ -1,10 +1,3 @@
-export const QUICK_DIAL = {
-  label: "Quick Dial Emergency Services",
-  hint: "Tap for immediate assistance from 911 or Poison Control.",
-  primaryNumber: "911",
-  secondaryNumber: "1-800-222-1222",
-};
-
 export const RELATIONSHIP_OPTIONS = [
   "Spouse",
   "Parent",
@@ -16,12 +9,10 @@ export const RELATIONSHIP_OPTIONS = [
   "Friend",
 ];
 
-export const SERVICE_CATEGORY_OPTIONS = [
-  "Utilities",
-  "Security",
-  "Medical",
-  "Home Repair",
-  "Transportation",
-  "Insurance",
-  "Other",
+export const CATEGORY_OPTIONS = [
+  "Medical Emergency",
+  "Legal Guardian",
+  "Neighbor / Keyholder",
+  "Security Provider",
+  "Family",
 ];

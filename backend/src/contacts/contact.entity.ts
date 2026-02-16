@@ -14,8 +14,8 @@ export class Contact {
   @Column()
   family_owner_id: string;
 
-  @Column({ default: 'primary' })
-  type: 'primary' | 'service';
+  @Column()
+  created_by_user_id: string;
 
   @Column()
   name: string;

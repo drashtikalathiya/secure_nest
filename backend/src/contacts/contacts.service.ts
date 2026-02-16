@@ -29,7 +29,6 @@ export class ContactsService {
 
     return {
       items: contacts,
-      permissions: this.getPermissions(requester),
     };
   }
 
@@ -37,26 +36,19 @@ export class ContactsService {
     const requester = await this.getRequester(firebaseUid);
     const familyOwnerId = this.getFamilyOwnerId(requester);
 
-    if (!this.getPermissions(requester).edit) {
-      throw new ForbiddenException(
-        'You do not have permission to create contacts.',
-      );
-    }
-
-    const type = body?.type === 'service' ? 'service' : 'primary';
-    this.validateContactPayload(type, body);
+    this.validateContactPayload(body);
 
     const contact = this.contactRepo.create({
       family_owner_id: familyOwnerId,
-      type,
+      created_by_user_id: requester.id,
       name: this.clean(body?.name),
-      relationship: type === 'primary' ? this.clean(body?.relationship) : null,
+      relationship: this.clean(body?.relationship),
       phone: this.clean(body?.phone),
       email: this.clean(body?.email),
       address: this.clean(body?.address),
       notes: this.clean(body?.notes),
-      category: type === 'service' ? this.clean(body?.category) : null,
-      website: type === 'service' ? this.clean(body?.website) : null,
+      category: this.clean(body?.category),
+      website: this.clean(body?.website),
     });
 
     return this.contactRepo.save(contact);
@@ -69,12 +61,6 @@ export class ContactsService {
   ): Promise<Contact> {
     const requester = await this.getRequester(firebaseUid);
 
-    if (!this.getPermissions(requester).edit) {
-      throw new ForbiddenException(
-        'You do not have permission to edit contacts.',
-      );
-    }
-
     const familyOwnerId = this.getFamilyOwnerId(requester);
 
     const existing = await this.contactRepo.findOne({
@@ -85,19 +71,21 @@ export class ContactsService {
       throw new NotFoundException('Contact not found in your family.');
     }
 
-    const type = body.type ?? existing.type;
-    this.validateContactPayload(type, body);
+    if (existing.created_by_user_id !== requester.id) {
+      throw new ForbiddenException('Only creator can edit this contact.');
+    }
+
+    this.validateContactPayload(body);
 
     const nextPayload: Partial<Contact> = {
-      type,
       name: this.clean(body?.name),
-      relationship: type === 'primary' ? this.clean(body?.relationship) : null,
+      relationship: this.clean(body?.relationship),
       phone: this.clean(body?.phone),
       email: this.clean(body?.email),
       address: this.clean(body?.address),
       notes: this.clean(body?.notes),
-      category: type === 'service' ? this.clean(body?.category) : null,
-      website: type === 'service' ? this.clean(body?.website) : null,
+      category: this.clean(body?.category),
+      website: this.clean(body?.website),
     };
 
     const updated = await this.contactRepo.save({
@@ -115,12 +103,6 @@ export class ContactsService {
   async deleteContact(firebaseUid: string, contactId: string): Promise<void> {
     const requester = await this.getRequester(firebaseUid);
 
-    if (!this.getPermissions(requester).delete) {
-      throw new ForbiddenException(
-        'You do not have permission to delete contacts.',
-      );
-    }
-
     const familyOwnerId = this.getFamilyOwnerId(requester);
 
     const existing = await this.contactRepo.findOne({
@@ -134,6 +116,10 @@ export class ContactsService {
       throw new ForbiddenException(
         'You can delete only contacts in your family.',
       );
+    }
+
+    if (existing.created_by_user_id !== requester.id) {
+      throw new ForbiddenException('Only creator can delete this contact.');
     }
 
     await this.contactRepo.delete({ id: contactId });
@@ -163,33 +149,13 @@ export class ContactsService {
     return user.family_owner_id;
   }
 
-  private getPermissions(user: User) {
-    if (user.role === 'owner') {
-      return { view: true, edit: true, delete: true };
-    }
-
-    return {
-      view: Boolean(user.permission_view),
-      edit: Boolean(user.permission_edit),
-      delete: Boolean(user.permission_delete),
-    };
-  }
-
-  private validateContactPayload(type: 'primary' | 'service', body: any): void {
+  private validateContactPayload(body: any): void {
     if (!this.clean(body?.name)) {
       throw new BadRequestException('Contact name is required.');
     }
 
-    if (type === 'primary') {
-      if (!this.clean(body?.relationship)) {
-        throw new BadRequestException('Relationship is required.');
-      }
-
-      if (!this.clean(body?.phone)) {
-        throw new BadRequestException('Phone number is required.');
-      }
-
-      return;
+    if (!this.clean(body?.relationship)) {
+      throw new BadRequestException('Relationship is required.');
     }
 
     if (!this.clean(body?.phone)) {

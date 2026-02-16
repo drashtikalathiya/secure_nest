@@ -6,6 +6,7 @@ import {
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import ConfirmModal from "../components/common/ConfirmModal";
 import PageHeader from "../components/common/PageHeader";
 import PasswordFormDrawer from "../components/password/PasswordFormDrawer";
 import PasswordItem from "../components/password/PasswordItem";
@@ -49,6 +50,8 @@ export default function Passwords() {
   const [editingPasswordId, setEditingPasswordId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const [activeCategory, setActiveCategory] = useState("All Items");
   const [searchQuery, setSearchQuery] = useState("");
@@ -171,16 +174,20 @@ export default function Passwords() {
     }
   };
 
-  const handleDeletePassword = async (id) => {
-    if (!id) return;
+  const handleDeletePassword = async () => {
+    if (!deleteTarget?.id) return;
 
     try {
+      setDeleteLoading(true);
       const token = await auth.currentUser.getIdToken();
-      await deletePassword(token, id);
+      await deletePassword(token, deleteTarget.id);
       toast.success("Password deleted.");
+      setDeleteTarget(null);
       await loadData();
     } catch (error) {
       toast.error(error?.message || "Failed to delete password.");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -245,7 +252,7 @@ export default function Passwords() {
   const categoryItems = ["All Items", ...availableCategories];
 
   return (
-    <section className="space-y-5">
+    <section>
       <PageHeader
         title="Passwords"
         subtitle="Manage saved credentials with visibility controls for your family."
@@ -261,7 +268,7 @@ export default function Passwords() {
         }
       />
 
-      <div className="grid items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+      <div className="grid items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)] mt-4">
         <aside className="rounded-2xl border border-slate-800/80 bg-dashboard-card p-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
             Categories
@@ -322,7 +329,10 @@ export default function Passwords() {
                   : "border-slate-800/80 bg-slate-900/70 text-slate-300 hover:text-white"
               }`}
             >
-              <IconStar size={13} fill={favoritesOnly ? "currentColor" : "none"} />
+              <IconStar
+                size={13}
+                fill={favoritesOnly ? "currentColor" : "none"}
+              />
               Favorites
             </button>
           </div>
@@ -349,7 +359,12 @@ export default function Passwords() {
                         canEdit={item.createdByUserId === currentUserId}
                         canDelete={item.createdByUserId === currentUserId}
                         onEdit={() => handleEditPassword(item)}
-                        onDelete={() => handleDeletePassword(item.id)}
+                        onDelete={() =>
+                          setDeleteTarget({
+                            id: item.id,
+                            name: item.name,
+                          })
+                        }
                         variant="list"
                       />
                     );
@@ -376,7 +391,12 @@ export default function Passwords() {
                       canEdit={item.createdByUserId === currentUserId}
                       canDelete={item.createdByUserId === currentUserId}
                       onEdit={() => handleEditPassword(item)}
-                      onDelete={() => handleDeletePassword(item.id)}
+                      onDelete={() =>
+                        setDeleteTarget({
+                          id: item.id,
+                          name: item.name,
+                        })
+                      }
                       variant="card"
                     />
                   );
@@ -399,8 +419,24 @@ export default function Passwords() {
         onSubmit={handleSave}
         setForm={setForm}
         familyOptions={familyOptions}
-        categoryOptions={availableCategories.length ? availableCategories : PASSWORD_CATEGORY_OPTIONS}
+        categoryOptions={
+          availableCategories.length
+            ? availableCategories
+            : PASSWORD_CATEGORY_OPTIONS
+        }
         saving={saveLoading}
+      />
+
+      <ConfirmModal
+        open={Boolean(deleteTarget)}
+        title="Delete Password?"
+        message={`This will permanently remove "${
+          deleteTarget?.name || "this password"
+        }" from your vault.`}
+        confirmLabel="Delete"
+        confirmLoading={deleteLoading}
+        onConfirm={handleDeletePassword}
+        onCancel={() => setDeleteTarget(null)}
       />
     </section>
   );
