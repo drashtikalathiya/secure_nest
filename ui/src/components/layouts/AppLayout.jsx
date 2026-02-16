@@ -6,6 +6,7 @@ import {
   IconShieldLock,
   IconLogout,
   IconMenu2,
+  IconUser,
   IconX,
 } from "@tabler/icons-react";
 import { firebaseLogout } from "../../services/firebaseAuth";
@@ -197,7 +198,9 @@ export default function AppLayout() {
                       className="h-9 w-9 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="h-9 w-9 rounded-full bg-gradient-to-br from-sky-400/70 to-indigo-500/70" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-slate-300">
+                      <IconUser size={16} />
+                    </div>
                   )}
                 </button>
               </div>

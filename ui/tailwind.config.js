@@ -11,7 +11,7 @@ module.exports = {
         "background-light": "#f2f6fc",
         "background-dark": "#081328",
         "card-dark": "#0f1c33",
-        "dashboard-card": "#1a2233",
+        "dashboard-card": "#121f36",
         "border-dark": "#21324e",
         "text-muted": "#8ea2c5",
       },

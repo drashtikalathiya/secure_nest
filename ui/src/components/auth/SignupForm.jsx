@@ -152,7 +152,7 @@ export default function SignupForm() {
 
   return (
     <>
-      <div>
+      <div className="flex flex-col items-center">
         <h2 className="text-3xl font-bold">Create your account</h2>
         <p className="text-gray-400">
           Protect what matters most with SecureNest.
