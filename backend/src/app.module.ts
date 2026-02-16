@@ -9,6 +9,7 @@ import { BillingModule } from './billing/billing.module';
 import { UsersModule } from './users/users.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { ContactsModule } from './contacts/contacts.module';
+import { PasswordsModule } from './passwords/passwords.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { ContactsModule } from './contacts/contacts.module';
     UsersModule,
     InvitationsModule,
     ContactsModule,
+    PasswordsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

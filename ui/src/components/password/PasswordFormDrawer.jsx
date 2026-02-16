@@ -25,6 +25,7 @@ export default function PasswordFormDrawer({
   setForm,
   familyOptions = [],
   categoryOptions = [],
+  saving = false,
 }) {
   const toggleSharedMember = (id) => {
     setForm((prev) => {
@@ -236,7 +237,7 @@ export default function PasswordFormDrawer({
                   const checked = Boolean(
                     (form.sharedWith || []).includes(member.id),
                   );
-                  const disabled = form.visibility === "private";
+                  const disabled = form.visibility !== "specific";
 
                   return (
                     <label
@@ -269,6 +270,11 @@ export default function PasswordFormDrawer({
                     </label>
                   );
                 })}
+                {familyOptions.length === 0 ? (
+                  <div className="px-3 py-3 text-[11px] text-slate-500">
+                    No family members found.
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
@@ -279,16 +285,18 @@ export default function PasswordFormDrawer({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700"
+              disabled={saving}
+              className="rounded-lg bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancel
             </button>
             <button
               type="submit"
               form="add-password-form"
-              className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary-strong"
+              disabled={saving}
+              className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Save Password
+              {saving ? "Saving..." : "Save Password"}
             </button>
           </div>
         </div>

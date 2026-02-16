@@ -11,7 +11,6 @@ import {
 import {
   PASSWORD_CATEGORY_ICON_STYLES,
   PASSWORD_CATEGORY_ICONS,
-  PASSWORD_FALLBACK_ICON,
 } from "../../const/passwordsData";
 
 export default function PasswordItem({
@@ -21,12 +20,15 @@ export default function PasswordItem({
   handleCopy,
   isFavorite = false,
   onToggleFavorite,
+  canEdit = false,
+  canDelete = false,
+  onEdit,
+  onDelete,
   variant = "list", // "list" | "card"
 }) {
-  const rowKey = `${item.name}-${item.value}`;
+  const rowKey = item.id || `${item.name}-${item.value}`;
 
-  const CategoryIcon =
-    PASSWORD_CATEGORY_ICONS[item.category] || PASSWORD_FALLBACK_ICON;
+  const CategoryIcon = PASSWORD_CATEGORY_ICONS[item.category];
 
   const accent =
     PASSWORD_CATEGORY_ICON_STYLES[item.category] ||
@@ -106,14 +108,18 @@ export default function PasswordItem({
           </button>
           <button
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-800/80 hover:text-white"
+            onClick={onEdit}
+            disabled={!canEdit}
+            className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-800/80 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Edit"
           >
             <IconPencil size={16} />
           </button>
           <button
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-rose-500/10 hover:text-rose-300"
+            onClick={onDelete}
+            disabled={!canDelete}
+            className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-rose-500/10 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Delete"
           >
             <IconTrash size={16} />
@@ -193,6 +199,8 @@ export default function PasswordItem({
         </button>
         <button
           type="button"
+          onClick={onEdit}
+          disabled={!canEdit}
           className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-800/80 hover:text-white"
           aria-label="Edit"
         >
@@ -200,7 +208,9 @@ export default function PasswordItem({
         </button>
         <button
           type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-rose-500/10 hover:text-rose-300"
+          onClick={onDelete}
+          disabled={!canDelete}
+          className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-rose-500/10 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
           aria-label="Delete"
         >
           <IconTrash size={14} />

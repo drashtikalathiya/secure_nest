@@ -4,36 +4,59 @@ import {
   IconSearch,
   IconStar,
 } from "@tabler/icons-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
 import PageHeader from "../components/common/PageHeader";
 import PasswordFormDrawer from "../components/password/PasswordFormDrawer";
 import PasswordItem from "../components/password/PasswordItem";
+import { useAuth } from "../context/AuthContext";
 import {
   PASSWORD_CATEGORY_ICONS,
   PASSWORD_CATEGORY_OPTIONS,
-  PASSWORD_INITIAL_CARDS,
 } from "../const/passwordsData";
+import { auth } from "../services/firebase";
+import { getFamilyMembers } from "../services/usersApi";
+import {
+  createPassword,
+  deletePassword,
+  getPasswords,
+  updatePassword,
+} from "../services/passwordsApi";
 
-const FAMILY_VISIBILITY_OPTIONS = [
-  { id: "sarah", name: "Sarah Jenkins", relation: "Wife" },
-  { id: "john", name: "John Doe", relation: "Brother" },
-  { id: "emily", name: "Emily Jenkins", relation: "Daughter" },
-];
+const getRowKey = (item) => item.id || `${item.name}-${item.value}`;
+
+const toPasswordItem = (record) => ({
+  id: record.id,
+  name: record.site_name || "Untitled",
+  category: record.category || "Work",
+  value: record.username_or_email || "",
+  password: record.password_value || "",
+  websiteUrl: record.website_url || "",
+  visibility: record.visibility || "family",
+  sharedWith: Array.isArray(record.shared_with_user_ids)
+    ? record.shared_with_user_ids
+    : [],
+  createdByUserId: record.created_by_user_id || null,
+  access: record.visibility === "private" ? "Only Owner" : "Shared",
+});
 
 export default function Passwords() {
-  const [cards, setCards] = useState(PASSWORD_INITIAL_CARDS);
+  const { user } = useAuth();
+
+  const [cards, setCards] = useState([]);
   const [revealed, setRevealed] = useState({});
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingPasswordId, setEditingPasswordId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saveLoading, setSaveLoading] = useState(false);
+
   const [activeCategory, setActiveCategory] = useState("All Items");
   const [searchQuery, setSearchQuery] = useState("");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [favoriteKeys, setFavoriteKeys] = useState(() => {
-    const defaults = {};
-    PASSWORD_INITIAL_CARDS.slice(0, 2).forEach((item) => {
-      defaults[`${item.name}-${item.value}`] = true;
-    });
-    return defaults;
-  });
+  const [favoriteKeys, setFavoriteKeys] = useState({});
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [familyOptions, setFamilyOptions] = useState([]);
+
   const [form, setForm] = useState({
     name: "",
     category: PASSWORD_CATEGORY_OPTIONS[0] || "Work",
@@ -41,36 +64,10 @@ export default function Passwords() {
     value: "",
     password: "",
     visibility: "family", // "private" | "family" | "specific"
-    sharedWith: ["sarah", "emily"],
+    sharedWith: [],
   });
 
-  const handleCopy = async (value) => {
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch (error) {
-      console.error("Copy failed", error);
-    }
-  };
-
-  const handleChange = (field) => (event) => {
-    setForm((prev) => ({ ...prev, [field]: event.target.value }));
-  };
-
-  const handleSave = (event) => {
-    event.preventDefault();
-    if (!form.name.trim()) return;
-
-    const newCard = {
-      name: form.name.trim(),
-      category: form.category,
-      websiteUrl: form.websiteUrl.trim(),
-      label: form.value.includes("@") ? "EMAIL" : "USERNAME",
-      value: form.value.trim(),
-      password: form.password || "password123",
-      access: form.visibility === "private" ? "Only Owner" : "Shared",
-    };
-
-    setCards((prev) => [newCard, ...prev]);
+  const resetForm = useCallback(() => {
     setForm({
       name: "",
       category: PASSWORD_CATEGORY_OPTIONS[0] || "Work",
@@ -78,9 +75,127 @@ export default function Passwords() {
       value: "",
       password: "",
       visibility: "family",
-      sharedWith: ["sarah", "emily"],
+      sharedWith: [],
     });
-    setIsAddOpen(false);
+    setEditingPasswordId(null);
+  }, []);
+
+  const handleCopy = async (value) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success("Copied");
+    } catch (error) {
+      toast.error("Copy failed");
+    }
+  };
+
+  const handleChange = (field) => (event) => {
+    setForm((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const loadData = useCallback(async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      setCards([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = await currentUser.getIdToken();
+      const [passwordRes, membersRes] = await Promise.all([
+        getPasswords(token),
+        getFamilyMembers(token),
+      ]);
+
+      const passwordData = passwordRes?.data || {};
+      const items = Array.isArray(passwordData.items) ? passwordData.items : [];
+      const mappedCards = items.map(toPasswordItem);
+      setCards(mappedCards);
+
+      const members = Array.isArray(membersRes?.data) ? membersRes.data : [];
+      const me = members.find((member) => member.email === user?.email);
+      setCurrentUserId(me?.id || null);
+      const options = members
+        .filter((member) => member.email !== user?.email)
+        .map((member) => ({
+          id: member.id,
+          name: member.name || member.email?.split("@")[0] || "Family Member",
+          relation: member.role === "owner" ? "Owner" : "Member",
+        }));
+      setFamilyOptions(options);
+    } catch (error) {
+      setCards([]);
+      toast.error(error?.message || "Failed to load passwords.");
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.email]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleSave = async (event) => {
+    event.preventDefault();
+
+    try {
+      setSaveLoading(true);
+      const token = await auth.currentUser.getIdToken();
+      const payload = {
+        name: form.name,
+        category: form.category,
+        websiteUrl: form.websiteUrl,
+        value: form.value,
+        password: form.password,
+        visibility: form.visibility,
+        sharedWith: form.sharedWith,
+      };
+
+      if (editingPasswordId) {
+        await updatePassword(token, editingPasswordId, payload);
+        toast.success("Password updated.");
+      } else {
+        await createPassword(token, payload);
+        toast.success("Password saved.");
+      }
+
+      resetForm();
+      setIsAddOpen(false);
+      await loadData();
+    } catch (error) {
+      toast.error(error?.message || "Failed to save password.");
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const handleDeletePassword = async (id) => {
+    if (!id) return;
+
+    try {
+      const token = await auth.currentUser.getIdToken();
+      await deletePassword(token, id);
+      toast.success("Password deleted.");
+      await loadData();
+    } catch (error) {
+      toast.error(error?.message || "Failed to delete password.");
+    }
+  };
+
+  const handleEditPassword = (item) => {
+    setEditingPasswordId(item.id || null);
+    setForm({
+      name: item.name || "",
+      category: item.category || PASSWORD_CATEGORY_OPTIONS[0] || "Work",
+      websiteUrl: item.websiteUrl || "",
+      value: item.value || "",
+      password: item.password || "",
+      visibility: item.visibility || "family",
+      sharedWith: Array.isArray(item.sharedWith) ? item.sharedWith : [],
+    });
+    setIsAddOpen(true);
   };
 
   const toggleFavorite = (rowKey) => {
@@ -92,10 +207,22 @@ export default function Passwords() {
 
   const categoryCounts = useMemo(() => {
     const counts = { "All Items": cards.length };
-    PASSWORD_CATEGORY_OPTIONS.forEach((option) => {
-      counts[option] = cards.filter((item) => item.category === option).length;
+    cards.forEach((item) => {
+      const category = item.category || "Uncategorized";
+      counts[category] = (counts[category] || 0) + 1;
     });
     return counts;
+  }, [cards]);
+
+  const availableCategories = useMemo(() => {
+    const dynamicCategories = cards
+      .map((item) => item.category)
+      .filter(Boolean)
+      .map((value) => value.trim());
+
+    return Array.from(
+      new Set([...PASSWORD_CATEGORY_OPTIONS, ...dynamicCategories]),
+    ).filter(Boolean);
   }, [cards]);
 
   const categoryFilteredCards = useMemo(() => {
@@ -107,7 +234,7 @@ export default function Passwords() {
     const query = searchQuery.trim().toLowerCase();
 
     return categoryFilteredCards.filter((item) => {
-      const rowKey = `${item.name}-${item.value}`;
+      const rowKey = getRowKey(item);
       const matchesSearch = !query || item.name.toLowerCase().includes(query);
       const matchesFavorite = !favoritesOnly || Boolean(favoriteKeys[rowKey]);
 
@@ -115,13 +242,13 @@ export default function Passwords() {
     });
   }, [categoryFilteredCards, favoriteKeys, favoritesOnly, searchQuery]);
 
-  const categoryItems = ["All Items", ...PASSWORD_CATEGORY_OPTIONS];
+  const categoryItems = ["All Items", ...availableCategories];
 
   return (
-    <section>
+    <section className="space-y-5">
       <PageHeader
         title="Passwords"
-        subtitle="Favorite passwords with quick icon actions."
+        subtitle="Manage saved credentials with visibility controls for your family."
         right={
           <button
             type="button"
@@ -134,7 +261,7 @@ export default function Passwords() {
         }
       />
 
-      <div className="grid items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)] mt-4">
+      <div className="grid items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="rounded-2xl border border-slate-800/80 bg-dashboard-card p-4">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
             Categories
@@ -195,67 +322,85 @@ export default function Passwords() {
                   : "border-slate-800/80 bg-slate-900/70 text-slate-300 hover:text-white"
               }`}
             >
-              <IconStar
-                size={13}
-                fill={favoritesOnly ? "currentColor" : "none"}
-              />
+              <IconStar size={13} fill={favoritesOnly ? "currentColor" : "none"} />
               Favorites
             </button>
           </div>
 
-          <div className="hidden space-y-3 lg:block">
-            {filteredCards.length > 0 ? (
-              filteredCards.map((item) => {
-                const rowKey = `${item.name}-${item.value}`;
-                return (
-                  <PasswordItem
-                    key={rowKey}
-                    item={item}
-                    revealed={revealed}
-                    setRevealed={setRevealed}
-                    handleCopy={handleCopy}
-                    isFavorite={Boolean(favoriteKeys[rowKey])}
-                    onToggleFavorite={() => toggleFavorite(rowKey)}
-                    variant="list"
-                  />
-                );
-              })
-            ) : (
-              <div className="rounded-xl border border-slate-800/70 bg-slate-900/40 px-4 py-10 text-center text-sm text-slate-500">
-                No passwords found.
+          {loading ? (
+            <div className="rounded-xl border border-slate-800/70 bg-slate-900/40 px-4 py-10 text-center text-sm text-slate-500">
+              Loading passwords...
+            </div>
+          ) : (
+            <>
+              <div className="hidden space-y-3 lg:block">
+                {filteredCards.length > 0 ? (
+                  filteredCards.map((item) => {
+                    const rowKey = getRowKey(item);
+                    return (
+                      <PasswordItem
+                        key={rowKey}
+                        item={item}
+                        revealed={revealed}
+                        setRevealed={setRevealed}
+                        handleCopy={handleCopy}
+                        isFavorite={Boolean(favoriteKeys[rowKey])}
+                        onToggleFavorite={() => toggleFavorite(rowKey)}
+                        canEdit={item.createdByUserId === currentUserId}
+                        canDelete={item.createdByUserId === currentUserId}
+                        onEdit={() => handleEditPassword(item)}
+                        onDelete={() => handleDeletePassword(item.id)}
+                        variant="list"
+                      />
+                    );
+                  })
+                ) : (
+                  <div className="rounded-xl border border-slate-800/70 bg-slate-900/40 px-4 py-10 text-center text-sm text-slate-500">
+                    No passwords found.
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          <div className="space-y-4 lg:hidden">
-            {filteredCards.map((item) => {
-              const rowKey = `${item.name}-${item.value}`;
-              return (
-                <PasswordItem
-                  key={rowKey}
-                  item={item}
-                  revealed={revealed}
-                  setRevealed={setRevealed}
-                  handleCopy={handleCopy}
-                  isFavorite={Boolean(favoriteKeys[rowKey])}
-                  onToggleFavorite={() => toggleFavorite(rowKey)}
-                  variant="card"
-                />
-              );
-            })}
-          </div>
+              <div className="space-y-4 lg:hidden">
+                {filteredCards.map((item) => {
+                  const rowKey = getRowKey(item);
+                  return (
+                    <PasswordItem
+                      key={rowKey}
+                      item={item}
+                      revealed={revealed}
+                      setRevealed={setRevealed}
+                      handleCopy={handleCopy}
+                      isFavorite={Boolean(favoriteKeys[rowKey])}
+                      onToggleFavorite={() => toggleFavorite(rowKey)}
+                      canEdit={item.createdByUserId === currentUserId}
+                      canDelete={item.createdByUserId === currentUserId}
+                      onEdit={() => handleEditPassword(item)}
+                      onDelete={() => handleDeletePassword(item.id)}
+                      variant="card"
+                    />
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       <PasswordFormDrawer
         isOpen={isAddOpen}
-        onClose={() => setIsAddOpen(false)}
+        onClose={() => {
+          if (saveLoading) return;
+          setIsAddOpen(false);
+          resetForm();
+        }}
         form={form}
         onChange={handleChange}
         onSubmit={handleSave}
         setForm={setForm}
-        familyOptions={FAMILY_VISIBILITY_OPTIONS}
-        categoryOptions={PASSWORD_CATEGORY_OPTIONS}
+        familyOptions={familyOptions}
+        categoryOptions={availableCategories.length ? availableCategories : PASSWORD_CATEGORY_OPTIONS}
+        saving={saveLoading}
       />
     </section>
   );
