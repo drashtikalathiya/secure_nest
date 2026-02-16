@@ -4,8 +4,8 @@ import {
   IconLock,
   IconUsers,
   IconUsersGroup,
-  IconX,
 } from "@tabler/icons-react";
+import RightSlider from "../common/RightSlider";
 
 const getInitials = (name = "") => {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -69,44 +69,20 @@ export default function PasswordFormDrawer({
   ];
 
   return (
-    <div
-      className={`fixed inset-0 z-50 transition duration-300 mt-0 ${
-        isOpen ? "opacity-100" : "pointer-events-none opacity-0"
-      }`}
+    <RightSlider
+      open={isOpen}
+      onClose={onClose}
+      title="Add Password"
+      subtitle="Save credentials and control who can view them."
+      maxWidthClass="max-w-[520px]"
+      panelClassName="bg-[#121f36]"
+      closeAriaLabel="Close add password form"
     >
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute inset-0 bg-slate-950/70"
-        aria-label="Close add password form"
-      />
-      <aside
-        className={`absolute right-0 top-0 flex h-full w-full max-w-[520px] flex-col border-l border-slate-800/80 bg-[#121f36] shadow-2xl transition duration-300 ease-out ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+      <form
+        id="add-password-form"
+        className="flex-1 space-y-4 overflow-y-auto px-5 py-4"
+        onSubmit={onSubmit}
       >
-        <div className="flex items-start justify-between border-b border-slate-800/80 px-5 py-4">
-          <div>
-            <h3 className="text-base font-semibold text-white">Add Password</h3>
-            <p className="text-xs text-slate-400">
-              Save credentials and control who can view them.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-800/70 bg-slate-900/70 text-slate-400 hover:text-white"
-            aria-label="Close add password form"
-          >
-            <IconX size={16} />
-          </button>
-        </div>
-
-        <form
-          id="add-password-form"
-          className="flex-1 space-y-4 overflow-y-auto px-5 py-4"
-          onSubmit={onSubmit}
-        >
           {/* <div className="grid gap-3 sm:grid-cols-2"> */}
           <div>
             <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
@@ -278,29 +254,28 @@ export default function PasswordFormDrawer({
               </div>
             </div>
           </div>
-        </form>
+      </form>
 
-        <div className="space-y-2 border-t border-slate-800/80 px-5 py-4">
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={saving}
-              className="rounded-lg bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              form="add-password-form"
-              disabled={saving}
-              className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saving ? "Saving..." : "Save Password"}
-            </button>
-          </div>
+      <div className="space-y-2 border-t border-slate-800/80 px-5 py-4">
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded-lg bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="add-password-form"
+            disabled={saving}
+            className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saving ? "Saving..." : "Save Password"}
+          </button>
         </div>
-      </aside>
-    </div>
+      </div>
+    </RightSlider>
   );
 }

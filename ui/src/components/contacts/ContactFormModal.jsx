@@ -1,4 +1,4 @@
-import { IconX } from "@tabler/icons-react";
+import RightSlider from "../common/RightSlider";
 
 export default function ContactFormModal({
   open,
@@ -12,47 +12,20 @@ export default function ContactFormModal({
   onSubmit,
 }) {
   return (
-    <div
-      className={`fixed inset-0 z-50 transition duration-300 ${
-        open ? "opacity-100" : "pointer-events-none opacity-0"
-      }`}
+    <RightSlider
+      open={open}
+      onClose={onClose}
+      title={editingId ? "Edit Contact" : "Add New Contact"}
+      subtitle="Critical contact details accessible during urgent situations."
+      maxWidthClass="max-w-[460px]"
+      panelClassName="bg-[#121f36]"
+      closeAriaLabel="Close add contact form"
     >
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute inset-0 bg-slate-950/70"
-        aria-label="Close add contact form"
-      />
-
-      <aside
-        className={`absolute right-0 top-0 flex h-full w-full max-w-[460px] flex-col border-l border-slate-800/80 bg-[#121f36] shadow-2xl transition duration-300 ease-out ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
+      <form
+        id="add-contact-form"
+        onSubmit={onSubmit}
+        className="flex-1 space-y-4 overflow-y-auto px-5 py-4"
       >
-        <div className="flex items-start justify-between border-b border-slate-800/80 px-5 py-4">
-          <div>
-            <h3 className="text-base font-semibold text-white">
-              {editingId ? "Edit Contact" : "Add New Contact"}
-            </h3>
-            <p className="text-xs text-slate-400">
-              Critical contact details accessible during urgent situations.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
-            aria-label="Close add contact form"
-          >
-            <IconX size={16} />
-          </button>
-        </div>
-
-        <form
-          id="add-contact-form"
-          onSubmit={onSubmit}
-          className="flex-1 space-y-4 overflow-y-auto px-5 py-4"
-        >
           <div className="flex flex-col gap-3">
             <label className="space-y-1">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -188,29 +161,28 @@ export default function ContactFormModal({
               />
             </label>
           </div>
-        </form>
+      </form>
 
-        <div className="space-y-2 border-t border-slate-800/80 px-5 py-4">
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitLoading}
-              className="rounded-lg bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              form="add-contact-form"
-              disabled={submitLoading}
-              className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {submitLoading ? "Saving..." : "Save Contact"}
-            </button>
-          </div>
+      <div className="space-y-2 border-t border-slate-800/80 px-5 py-4">
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitLoading}
+            className="rounded-lg bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="add-contact-form"
+            disabled={submitLoading}
+            className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {submitLoading ? "Saving..." : "Save Contact"}
+          </button>
         </div>
-      </aside>
-    </div>
+      </div>
+    </RightSlider>
   );
 }
