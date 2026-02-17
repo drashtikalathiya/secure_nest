@@ -13,6 +13,7 @@ import admin from '../../config/firebase-admin';
 import { Invitation } from './invitation.entity';
 import { User } from '../users/user.entity';
 import { getErrorMessage } from '../utils/errorMessage';
+import { getPlanMemberLimit, SubscriptionPlan } from '../billing/subscription-plan';
 
 const INVITE_EXPIRY_DAYS = 7;
 
@@ -30,6 +31,8 @@ export class InvitationsService {
       firebaseUid,
       'Only an owner can send invitations.',
     );
+
+    await this.ensureOwnerWithinSubscriptionMemberLimit(owner);
 
     const email = String(body?.email || '')
       .trim()
@@ -90,6 +93,8 @@ export class InvitationsService {
       invitationId,
       'Only pending invitations can be resent.',
     );
+
+    await this.ensureOwnerWithinSubscriptionMemberLimit(owner);
 
     const { token, expiresAt, inviteLink } = this.generateInviteAccess();
 
@@ -355,6 +360,8 @@ export class InvitationsService {
     user: User,
     owner: User,
   ) {
+    await this.ensureOwnerWithinSubscriptionMemberLimit(owner);
+
     await this.userRepo.update(user.id, {
       role: 'member',
       family_owner_id: owner.id,
@@ -372,19 +379,43 @@ export class InvitationsService {
       user.firebase_uid,
       'member',
       effectiveSubscription,
+      owner.subscription_plan,
     );
 
     return {
       role: 'member',
       is_subscribed: effectiveSubscription,
       family_owner_id: owner.id,
+      subscription_plan: owner.subscription_plan,
     };
+  }
+
+  private async ensureOwnerWithinSubscriptionMemberLimit(owner: User) {
+    if (!owner.is_subscribed) {
+      throw new BadRequestException('Active subscription is required.');
+    }
+
+    const memberLimit = getPlanMemberLimit(owner.subscription_plan);
+    const activeMembers = await this.userRepo.count({
+      where: { family_owner_id: owner.id, role: 'member' },
+    });
+
+    if (activeMembers >= memberLimit) {
+      throw new BadRequestException(
+        `Member limit reached for ${this.getPlanLabel(owner.subscription_plan)} plan (max ${memberLimit} members).`,
+      );
+    }
+  }
+
+  private getPlanLabel(plan: SubscriptionPlan) {
+    return plan === 'family' ? 'Family Nest' : 'Small Nest';
   }
 
   private async syncFirebaseClaims(
     firebaseUid: string,
     role: 'owner' | 'member',
     isSubscribed: boolean,
+    subscriptionPlan: SubscriptionPlan,
   ) {
     try {
       const userRecord = await admin.auth().getUser(firebaseUid);
@@ -394,6 +425,7 @@ export class InvitationsService {
         ...existingClaims,
         role,
         is_subscribed: isSubscribed,
+        subscription_plan: subscriptionPlan,
       });
     } catch (error) {
       console.error('Failed to sync invitation claims', {

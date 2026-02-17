@@ -21,6 +21,7 @@ export class AuthController {
         profile_photo_url: user.profile_photo_url,
         role: user.role,
         is_subscribed: user.is_subscribed,
+        subscription_plan: user.subscription_plan,
         family_owner_id: user.family_owner_id,
       });
     } catch (error) {
@@ -41,6 +42,7 @@ export class AuthController {
         profile_photo_url: user.profile_photo_url,
         role: user.role,
         is_subscribed: user.is_subscribed,
+        subscription_plan: user.subscription_plan,
         family_owner_id: user.family_owner_id,
       });
     } catch (error) {

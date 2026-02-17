@@ -78,6 +78,7 @@ export class AuthService {
       name: name || null,
       profile_photo_url: profilePhotoUrl || null,
       role: 'owner',
+      subscription_plan: 'small',
       permission_view: true,
       permission_edit: true,
       permission_delete: true,
@@ -131,12 +132,26 @@ export class AuthService {
 
   private async buildAuthResponse(user: User) {
     const payload = await this.authPayload(user);
-    await this.syncFirebaseClaims(user, payload.is_subscribed);
+    await this.syncFirebaseClaims(user, payload.is_subscribed, payload.subscription_plan);
     return payload;
   }
 
   private async authPayload(user: User) {
-    const isSubscribed = await this.getEffectiveSubscription(user);
+    const owner = await this.getOwnerForUser(user);
+    const isSubscribed = user.role === 'owner'
+      ? Boolean(user.is_subscribed)
+      : Boolean(owner?.is_subscribed);
+    const subscriptionPlan = owner?.subscription_plan || user.subscription_plan || 'small';
+
+    if (
+      user.role === 'member' &&
+      user.subscription_plan !== subscriptionPlan
+    ) {
+      await this.userRepo.update(user.id, {
+        subscription_plan: subscriptionPlan,
+      });
+      user.subscription_plan = subscriptionPlan;
+    }
 
     return {
       id: user.id,
@@ -146,23 +161,22 @@ export class AuthService {
       role: user.role,
       family_owner_id: user.family_owner_id,
       is_subscribed: isSubscribed,
+      subscription_plan: subscriptionPlan,
     };
   }
 
-  private async getEffectiveSubscription(user: User): Promise<boolean> {
+  private async getOwnerForUser(user: User): Promise<User | null> {
     if (user.role === 'owner') {
-      return Boolean(user.is_subscribed);
+      return user;
     }
 
     if (!user.family_owner_id) {
-      return false;
+      return null;
     }
 
-    const owner = await this.userRepo.findOne({
+    return this.userRepo.findOne({
       where: { id: user.family_owner_id, role: 'owner' },
     });
-
-    return Boolean(owner?.is_subscribed);
   }
 
   private async ensureOwnerFamilyId(user: User) {
@@ -175,6 +189,7 @@ export class AuthService {
   private async syncFirebaseClaims(
     user: User,
     effectiveSubscription: boolean,
+    subscriptionPlan: 'small' | 'family',
   ): Promise<void> {
     try {
       const userRecord = await admin.auth().getUser(user.firebase_uid);
@@ -183,6 +198,7 @@ export class AuthService {
         ...(userRecord.customClaims || {}),
         role: user.role,
         is_subscribed: Boolean(effectiveSubscription),
+        subscription_plan: subscriptionPlan,
         ...(user.name && { name: user.name }),
         ...(user.profile_photo_url && { profile_photo_url: user.profile_photo_url }),
       };

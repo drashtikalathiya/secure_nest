@@ -28,6 +28,9 @@ export class User {
   @Column({ default: false })
   is_subscribed: boolean;
 
+  @Column({ default: 'small' })
+  subscription_plan: 'small' | 'family';
+
   @Column({ nullable: true })
   subscribed_id: string;
 

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -8,6 +9,11 @@ import { Repository } from 'typeorm';
 import Stripe from 'stripe';
 import { User } from '../users/user.entity';
 import admin from '../../config/firebase-admin';
+import {
+  DEFAULT_SUBSCRIPTION_PLAN,
+  getSubscriptionPlanFromPriceId,
+  SubscriptionPlan,
+} from './subscription-plan';
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
@@ -36,13 +42,22 @@ export class BillingService {
       );
     }
 
+    const subscriptionPlan = getSubscriptionPlanFromPriceId(priceId);
+
+    if (!subscriptionPlan) {
+      throw new BadRequestException('Invalid Stripe price id for subscription.');
+    }
+
     const session = await this.stripe.checkout.sessions.create({
       mode: 'subscription',
       customer_email: user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${process.env.FRONTEND_URL}/dashboard`,
       cancel_url: `${process.env.FRONTEND_URL}/subscription/cancel`,
-      metadata: { userId: user.uid },
+      metadata: {
+        userId: user.uid,
+        subscriptionPlan,
+      },
     });
 
     return { url: session.url };
@@ -51,12 +66,14 @@ export class BillingService {
   async activateSubscription(
     firebaseUid: string,
     subscribedId?: string | null,
+    subscriptionPlan: SubscriptionPlan = DEFAULT_SUBSCRIPTION_PLAN,
   ) {
     await this.userRepo.update(
       { firebase_uid: firebaseUid },
       {
         is_subscribed: true,
         subscribed_id: subscribedId ?? null,
+        subscription_plan: subscriptionPlan,
       },
     );
 
@@ -69,6 +86,7 @@ export class BillingService {
     await this.syncFirebaseClaims(owner.firebase_uid, {
       role: 'owner',
       is_subscribed: true,
+      subscription_plan: owner.subscription_plan,
     });
 
     const members = await this.userRepo.find({
@@ -82,6 +100,7 @@ export class BillingService {
         this.syncFirebaseClaims(member.firebase_uid, {
           role: 'member',
           is_subscribed: true,
+          subscription_plan: owner.subscription_plan,
         }),
       ),
     );
@@ -111,9 +130,11 @@ export class BillingService {
         typeof session.subscription === 'string'
           ? session.subscription
           : (session.subscription?.id ?? null);
+      const subscriptionPlan =
+        session.metadata?.subscriptionPlan === 'family' ? 'family' : 'small';
 
       if (userId) {
-        await this.activateSubscription(userId, subscribedId);
+        await this.activateSubscription(userId, subscribedId, subscriptionPlan);
       }
     }
 
@@ -125,6 +146,7 @@ export class BillingService {
     claims: Partial<{
       role: 'owner' | 'member';
       is_subscribed: boolean;
+      subscription_plan: SubscriptionPlan;
     }>,
   ) {
     try {
