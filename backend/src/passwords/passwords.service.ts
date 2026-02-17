@@ -1,16 +1,26 @@
 import {
   BadRequestException,
   ForbiddenException,
+  InternalServerErrorException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+} from 'crypto';
 import { Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { PasswordRecord } from './password.entity';
 
 @Injectable()
 export class PasswordsService {
+  private static readonly ENCRYPTION_ALGORITHM = 'aes-256-gcm';
+  private static readonly IV_LENGTH = 12;
+
   constructor(
     @InjectRepository(PasswordRecord)
     private passwordRepo: Repository<PasswordRecord>,
@@ -33,7 +43,7 @@ export class PasswordsService {
     );
 
     return {
-      items: visibleItems,
+      items: visibleItems.map((item) => this.withDecryptedPassword(item)),
       permissions: { view: true, edit: true, delete: true },
     };
   }
@@ -64,9 +74,8 @@ export class PasswordsService {
         body?.value,
         'Username or email is required.',
       ),
-      password_value: this.requireField(
-        body?.password,
-        'Password is required.',
+      password_value: this.encryptPassword(
+        this.requireField(body?.password, 'Password is required.'),
       ),
       visibility,
       shared_with_user_ids:
@@ -75,7 +84,8 @@ export class PasswordsService {
           : null,
     });
 
-    return this.passwordRepo.save(record);
+    const saved = await this.passwordRepo.save(record);
+    return this.withDecryptedPassword(saved);
   }
 
   async updatePassword(
@@ -130,7 +140,9 @@ export class PasswordsService {
           : existing.username_or_email,
       password_value:
         body?.password !== undefined
-          ? this.requireField(body?.password, 'Password is required.')
+          ? this.encryptPassword(
+              this.requireField(body?.password, 'Password is required.'),
+            )
           : existing.password_value,
       visibility,
       shared_with_user_ids:
@@ -139,7 +151,7 @@ export class PasswordsService {
           : null,
     });
 
-    return updated;
+    return this.withDecryptedPassword(updated);
   }
 
   async deletePassword(firebaseUid: string, passwordId: string): Promise<void> {
@@ -265,5 +277,83 @@ export class PasswordsService {
     }
 
     return cleaned;
+  }
+
+  private withDecryptedPassword(item: PasswordRecord): PasswordRecord {
+    return {
+      ...item,
+      password_value: this.decryptPassword(item.password_value),
+    };
+  }
+
+  private getEncryptionKey(): Buffer {
+    const rawKey = process.env.PASSWORD_ENCRYPTION_KEY?.trim();
+    if (!rawKey) {
+      throw new InternalServerErrorException(
+        'PASSWORD_ENCRYPTION_KEY is not configured.',
+      );
+    }
+
+    return createHash('sha256').update(rawKey).digest();
+  }
+
+  private encryptPassword(value: string): string {
+    try {
+      const key = this.getEncryptionKey();
+      const iv = randomBytes(PasswordsService.IV_LENGTH);
+      const cipher = createCipheriv(
+        PasswordsService.ENCRYPTION_ALGORITHM,
+        key,
+        iv,
+      );
+      const encrypted = Buffer.concat([
+        cipher.update(value, 'utf8'),
+        cipher.final(),
+      ]);
+      const authTag = cipher.getAuthTag();
+
+      return `${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted.toString('base64')}`;
+    } catch (error) {
+      if (error instanceof InternalServerErrorException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to encrypt password before saving.',
+      );
+    }
+  }
+
+  private decryptPassword(value: string): string {
+    const parts = value?.split(':');
+    if (!parts || parts.length !== 3) {
+      return value;
+    }
+
+    try {
+      const [ivBase64, authTagBase64, encryptedBase64] = parts;
+      const key = this.getEncryptionKey();
+      const iv = Buffer.from(ivBase64, 'base64');
+      const authTag = Buffer.from(authTagBase64, 'base64');
+      const encrypted = Buffer.from(encryptedBase64, 'base64');
+      const decipher = createDecipheriv(
+        PasswordsService.ENCRYPTION_ALGORITHM,
+        key,
+        iv,
+      );
+      decipher.setAuthTag(authTag);
+      const decrypted = Buffer.concat([
+        decipher.update(encrypted),
+        decipher.final(),
+      ]);
+
+      return decrypted.toString('utf8');
+    } catch (error) {
+      if (error instanceof InternalServerErrorException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to decrypt stored password.',
+      );
+    }
   }
 }

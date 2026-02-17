@@ -1,6 +1,8 @@
+import { useState } from "react";
 import {
   IconChevronDown,
   IconEye,
+  IconEyeOff,
   IconLock,
   IconUsers,
   IconUsersGroup,
@@ -27,6 +29,8 @@ export default function PasswordFormDrawer({
   categoryOptions = [],
   saving = false,
 }) {
+  const [showPassword, setShowPassword] = useState(false);
+
   const toggleSharedMember = (id) => {
     setForm((prev) => {
       const current = new Set(prev.sharedWith || []);
@@ -83,177 +87,183 @@ export default function PasswordFormDrawer({
         className="flex-1 space-y-4 overflow-y-auto px-5 py-4"
         onSubmit={onSubmit}
       >
-          {/* <div className="grid gap-3 sm:grid-cols-2"> */}
+        {/* <div className="grid gap-3 sm:grid-cols-2"> */}
+        <div>
+          <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            Site Name
+          </label>
+          <input
+            value={form.name}
+            onChange={onChange("name")}
+            placeholder="e.g. Netflix"
+            className="mt-2 w-full rounded-xl border border-slate-800/80 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500/60 focus:outline-none"
+          />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-              Site Name
+              Category
             </label>
-            <input
-              value={form.name}
-              onChange={onChange("name")}
-              placeholder="e.g. Netflix"
-              className="mt-2 w-full rounded-xl border border-slate-800/80 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500/60 focus:outline-none"
-            />
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                Category
-              </label>
-              <div className="relative mt-2">
-                <select
-                  value={form.category}
-                  onChange={onChange("category")}
-                  className="w-full cursor-pointer appearance-none rounded-xl border border-slate-800/80 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-200 focus:border-sky-500/60 focus:outline-none"
-                >
-                  {categoryOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-                <IconChevronDown
-                  size={14}
-                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                Website URL
-              </label>
-              <div className="relative mt-2">
-                <input
-                  value={form.websiteUrl}
-                  onChange={onChange("websiteUrl")}
-                  placeholder="https://example.com"
-                  className="w-full rounded-xl border border-slate-800/80 bg-slate-900/70 px-4 py-2.5 pr-10 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500/60 focus:outline-none"
-                />
-              </div>
-            </div>
-          </div>
-          {/* </div> */}
-
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-              Username / Email
-            </label>
-            <input
-              value={form.value}
-              onChange={onChange("value")}
-              placeholder="username@example.com"
-              className="mt-2 w-full rounded-xl border border-slate-800/80 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500/60 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                Password
-              </label>
-            </div>
-            <div className="relative">
-              <input
-                value={form.password}
-                onChange={onChange("password")}
-                type="password"
-                className="w-full rounded-xl border border-slate-800/80 bg-slate-900/70 px-4 py-2.5 pr-10 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500/60 focus:outline-none"
-              />
-              <IconEye
+            <div className="relative mt-2">
+              <select
+                value={form.category}
+                onChange={onChange("category")}
+                className="w-full cursor-pointer appearance-none rounded-xl border border-slate-800/80 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-200 focus:border-sky-500/60 focus:outline-none"
+              >
+                {categoryOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+              <IconChevronDown
                 size={14}
                 className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
               />
             </div>
           </div>
 
-          <div className="border-t border-slate-800/70 pt-4">
-            <p className="text-sm font-semibold text-slate-200">
-              Who can see this password?
-            </p>
-
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              {visibilityCards.map((option) => {
-                const Icon = option.icon;
-                const isActive = form.visibility === option.key;
-
-                return (
-                  <button
-                    key={option.key}
-                    type="button"
-                    onClick={() => setVisibility(option.key)}
-                    className={`rounded-xl border px-3 py-3 text-left transition ${
-                      isActive
-                        ? "border-sky-500/60 bg-sky-500/10"
-                        : "border-slate-800/70 bg-slate-900/60"
-                    }`}
-                  >
-                    <Icon
-                      size={14}
-                      className={isActive ? "text-sky-300" : "text-slate-500"}
-                    />
-                    <p className="mt-2 text-xs font-semibold text-slate-200">
-                      {option.title}
-                    </p>
-                    <p className="mt-1 text-[10px] text-slate-500">
-                      {option.subtitle}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-3 overflow-hidden rounded-xl border border-slate-800/70 bg-slate-900/50">
-              <p className="border-b border-slate-800/70 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                Select Family Members
-              </p>
-              <div>
-                {familyOptions.map((member) => {
-                  const checked = Boolean(
-                    (form.sharedWith || []).includes(member.id),
-                  );
-                  const disabled = form.visibility !== "specific";
-
-                  return (
-                    <label
-                      key={member.id}
-                      className={`flex items-center justify-between border-b border-slate-800/60 px-3 py-2.5 last:border-b-0 ${
-                        disabled ? "opacity-60" : "cursor-pointer"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500/15 text-xs font-semibold text-sky-200">
-                          {getInitials(member.name)}
-                        </span>
-                        <span>
-                          <span className="block text-xs font-semibold text-slate-200">
-                            {member.name}
-                          </span>
-                          <span className="block text-[10px] text-slate-500">
-                            {member.relation}
-                          </span>
-                        </span>
-                      </div>
-
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-primary focus:ring-primary"
-                        checked={checked}
-                        onChange={() => toggleSharedMember(member.id)}
-                        disabled={disabled}
-                      />
-                    </label>
-                  );
-                })}
-                {familyOptions.length === 0 ? (
-                  <div className="px-3 py-3 text-[11px] text-slate-500">
-                    No family members found.
-                  </div>
-                ) : null}
-              </div>
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              Website URL
+            </label>
+            <div className="relative mt-2">
+              <input
+                value={form.websiteUrl}
+                onChange={onChange("websiteUrl")}
+                placeholder="https://example.com"
+                className="w-full rounded-xl border border-slate-800/80 bg-slate-900/70 px-4 py-2.5 pr-10 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500/60 focus:outline-none"
+              />
             </div>
           </div>
+        </div>
+        {/* </div> */}
+
+        <div>
+          <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            Username / Email
+          </label>
+          <input
+            value={form.value}
+            onChange={onChange("value")}
+            type="email"
+            placeholder="username@example.com"
+            className="mt-2 w-full rounded-xl border border-slate-800/80 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500/60 focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              Password
+            </label>
+          </div>
+          <div className="relative">
+            <input
+              value={form.password}
+              onChange={onChange("password")}
+              type={showPassword ? "text" : "password"}
+              className="w-full rounded-xl border border-slate-800/80 bg-slate-900/70 px-4 py-2.5 pr-10 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500/60 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 hover:bg-slate-800/80 hover:text-slate-300"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              title={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <IconEyeOff size={14} /> : <IconEye size={14} />}
+            </button>
+          </div>
+        </div>
+
+        <div className="border-t border-slate-800/70 pt-4">
+          <p className="text-sm font-semibold text-slate-200">
+            Who can see this password?
+          </p>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {visibilityCards.map((option) => {
+              const Icon = option.icon;
+              const isActive = form.visibility === option.key;
+
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => setVisibility(option.key)}
+                  className={`rounded-xl border px-3 py-3 text-left transition ${
+                    isActive
+                      ? "border-sky-500/60 bg-sky-500/10"
+                      : "border-slate-800/70 bg-slate-900/60"
+                  }`}
+                >
+                  <Icon
+                    size={14}
+                    className={isActive ? "text-sky-300" : "text-slate-500"}
+                  />
+                  <p className="mt-2 text-xs font-semibold text-slate-200">
+                    {option.title}
+                  </p>
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    {option.subtitle}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 overflow-hidden rounded-xl border border-slate-800/70 bg-slate-900/50">
+            <p className="border-b border-slate-800/70 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              Select Family Members
+            </p>
+            <div>
+              {familyOptions.map((member) => {
+                const checked = Boolean(
+                  (form.sharedWith || []).includes(member.id),
+                );
+                const disabled = form.visibility !== "specific";
+
+                return (
+                  <label
+                    key={member.id}
+                    className={`flex items-center justify-between border-b border-slate-800/60 px-3 py-2.5 last:border-b-0 ${
+                      disabled ? "opacity-60" : "cursor-pointer"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500/15 text-xs font-semibold text-sky-200">
+                        {getInitials(member.name)}
+                      </span>
+                      <span>
+                        <span className="block text-xs font-semibold text-slate-200">
+                          {member.name}
+                        </span>
+                        <span className="block text-[10px] text-slate-500">
+                          {member.relation}
+                        </span>
+                      </span>
+                    </div>
+
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-primary focus:ring-primary"
+                      checked={checked}
+                      onChange={() => toggleSharedMember(member.id)}
+                      disabled={disabled}
+                    />
+                  </label>
+                );
+              })}
+              {familyOptions.length === 0 ? (
+                <div className="px-3 py-3 text-[11px] text-slate-500">
+                  No family members found.
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
       </form>
 
       <div className="space-y-2 border-t border-slate-800/80 px-5 py-4">
