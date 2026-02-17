@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -53,6 +54,52 @@ export class UsersService {
       if (a.role === b.role) return 0;
       return a.role === 'owner' ? -1 : 1;
     });
+  }
+
+  async updateMyProfile(firebaseUid: string, body: any): Promise<User> {
+    const requester = await this.userRepo.findOne({
+      where: { firebase_uid: firebaseUid },
+    });
+
+    if (!requester) {
+      throw new NotFoundException('User account was not found.');
+    }
+
+    const nextName =
+      body?.name !== undefined ? this.requireField(body?.name, 'Name is required.') : requester.name;
+    const nextPhotoUrl =
+      body?.profilePhotoUrl !== undefined
+        ? this.cleanNullable(body?.profilePhotoUrl)
+        : requester.profile_photo_url;
+
+    try {
+      await admin.auth().updateUser(requester.firebase_uid, {
+        ...(nextName ? { displayName: nextName } : {}),
+        ...(nextPhotoUrl ? { photoURL: nextPhotoUrl } : {}),
+      });
+    } catch {
+      throw new InternalServerErrorException(
+        'Failed to sync profile with Firebase.',
+      );
+    }
+
+    await this.userRepo.update(
+      { id: requester.id },
+      {
+        name: nextName,
+        profile_photo_url: nextPhotoUrl,
+      },
+    );
+
+    const updated = await this.userRepo.findOne({
+      where: { id: requester.id },
+    });
+
+    if (!updated) {
+      throw new NotFoundException('User account was not found.');
+    }
+
+    return updated;
   }
 
   async updateMemberPermissions(
@@ -161,5 +208,20 @@ export class UsersService {
     });
 
     await this.userRepo.delete({ id: member.id });
+  }
+
+  private cleanNullable(value: any): string | null {
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    return trimmed || null;
+  }
+
+  private requireField(value: any, message: string): string {
+    const cleaned = this.cleanNullable(value);
+    if (!cleaned) {
+      throw new BadRequestException(message);
+    }
+
+    return cleaned;
   }
 }

@@ -39,6 +39,17 @@ export class UsersController {
   }
 
   @UseGuards(FirebaseAuthGuard)
+  @Patch('me')
+  async updateMyProfile(@Req() req, @Body() body) {
+    try {
+      const user = await this.usersService.updateMyProfile(req.user.uid, body);
+      return sendSuccess('Profile updated successfully', user);
+    } catch (error) {
+      return sendError('Failed to update profile', getErrorMessage(error));
+    }
+  }
+
+  @UseGuards(FirebaseAuthGuard)
   @Patch(':id/permissions')
   async updateMemberPermissions(@Req() req, @Param('id') id: string, @Body() body) {
     try {

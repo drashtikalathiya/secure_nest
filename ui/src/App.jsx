@@ -16,6 +16,7 @@ import Contacts from "./pages/Contacts";
 import Documents from "./pages/Documents";
 import Finance from "./pages/Finance";
 import Medical from "./pages/Medical";
+import Settings from "./pages/Settings";
 import { Toaster } from "react-hot-toast";
 import AcceptInvitation from "./pages/AcceptInvitation";
 
@@ -65,6 +66,7 @@ export default function App() {
           <Route path="/documents" element={<Documents />} />
           <Route path="/finance" element={<Finance />} />
           <Route path="/medical" element={<Medical />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>
     </BrowserRouter>

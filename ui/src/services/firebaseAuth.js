@@ -1,7 +1,10 @@
 import {
+  EmailAuthProvider,
   createUserWithEmailAndPassword,
+  reauthenticateWithCredential,
   signOut,
   signInWithEmailAndPassword,
+  updatePassword,
   updateProfile,
 } from "firebase/auth";
 import { auth } from "./firebase";
@@ -23,4 +26,15 @@ export const firebaseLogin = async (email, password) => {
 
 export const firebaseLogout = async () => {
   await signOut(auth);
+};
+
+export const changeFirebasePassword = async (currentPassword, newPassword) => {
+  const user = auth.currentUser;
+  if (!user || !user.email) {
+    throw new Error("No authenticated user found.");
+  }
+
+  const credential = EmailAuthProvider.credential(user.email, currentPassword);
+  await reauthenticateWithCredential(user, credential);
+  await updatePassword(user, newPassword);
 };

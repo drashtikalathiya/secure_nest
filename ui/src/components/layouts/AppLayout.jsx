@@ -195,7 +195,7 @@ export default function AppLayout() {
                     <img
                       src={user.profile_photo_url}
                       alt="Profile"
-                      className="h-9 w-9 rounded-full object-cover"
+                      className="h-9 w-9 rounded-full object-cover ring-2 ring-sky-500/40"
                     />
                   ) : (
                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-slate-300">

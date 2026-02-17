@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isSubscribed, loading }}>
+    <AuthContext.Provider value={{ user, isSubscribed, loading, setUser }}>
       {!loading && children}
     </AuthContext.Provider>
   );
