@@ -11,6 +11,7 @@ import { User } from '../users/user.entity';
 import admin from '../../config/firebase-admin';
 import {
   DEFAULT_SUBSCRIPTION_PLAN,
+  getPlanMemberLimit,
   getSubscriptionPlanFromPriceId,
   SubscriptionPlan,
 } from './subscription-plan';
@@ -46,6 +47,24 @@ export class BillingService {
 
     if (!subscriptionPlan) {
       throw new BadRequestException('Invalid Stripe price id for subscription.');
+    }
+
+    const isFamilyToSmallDowngrade =
+      dbUser.is_subscribed &&
+      dbUser.subscription_plan === 'family' &&
+      subscriptionPlan === 'small';
+
+    if (isFamilyToSmallDowngrade) {
+      const smallPlanLimit = getPlanMemberLimit('small');
+      const activeMembers = await this.userRepo.count({
+        where: { family_owner_id: dbUser.id, role: 'member' },
+      });
+
+      if (activeMembers > smallPlanLimit) {
+        throw new BadRequestException(
+          'Seat limit exceeded. Remove members or upgrade plan.',
+        );
+      }
     }
 
     const session = await this.stripe.checkout.sessions.create({
@@ -94,6 +113,11 @@ export class BillingService {
     });
 
     if (!members.length) return;
+
+    await this.userRepo.update(
+      { family_owner_id: owner.id, role: 'member' },
+      { subscription_plan: owner.subscription_plan },
+    );
 
     await Promise.all(
       members.map((member) =>

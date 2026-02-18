@@ -65,6 +65,8 @@ export const AuthProvider = ({ children }) => {
             "",
           role: backendUser.role || claims.role || null,
           is_subscribed: resolvedSubscription,
+          subscription_plan:
+            backendUser.subscription_plan || claims.subscription_plan || "small",
           family_owner_id: backendUser.family_owner_id || null,
         };
 

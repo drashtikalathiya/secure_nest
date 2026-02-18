@@ -3,37 +3,7 @@ import { IconShieldCheck, IconClock } from "@tabler/icons-react";
 import PlanCard from "../components/PlanCard";
 import { createCheckoutSession } from "../services/billingApi";
 import { auth } from "../services/firebase";
-const PLANS = [
-  {
-    id: "small",
-    title: "Small Nest",
-    price_id: "price_1Sxh5kCw3kMYCRHmpFs4zQ0u",
-    price: "$9",
-    description: "Perfect for couples or small families",
-    features: [
-      "Up to 3 members",
-      "Encrypted Vault",
-      "Shared Documents",
-      "30 Days Validity",
-    ],
-  },
-  {
-    id: "family",
-    title: "Family Nest",
-    price_id: "price_1Sxh7CCw3kMYCRHm7y4plN5p",
-    price: "$15",
-    popular: true,
-    description: "Best for secure family living",
-    features: [
-      "Up to 6 members",
-      "Encrypted Vault",
-      "Shared Documents",
-      "Medical Records Storage",
-      "Priority Support",
-      "30 Days Validity",
-    ],
-  },
-];
+import { SUBSCRIPTION_PLANS } from "../const/subscriptionPlans";
 
 const handleSubscribe = async (priceId) => {
   try {
@@ -59,7 +29,7 @@ export default function Subscription() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-        {PLANS.map((plan) => (
+        {SUBSCRIPTION_PLANS.map((plan) => (
           <PlanCard
             key={plan.id}
             plan={plan}

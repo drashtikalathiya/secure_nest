@@ -12,8 +12,18 @@ export async function createCheckoutSession(priceId, token) {
   );
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Failed to create checkout");
+    let data = null;
+    try {
+      data = await res.json();
+    } catch {
+      const text = await res.text();
+      throw new Error(text || "Failed to create checkout");
+    }
+
+    const message = Array.isArray(data?.message)
+      ? data.message[0]
+      : data?.message;
+    throw new Error(message || "Failed to create checkout");
   }
 
   return res.json();

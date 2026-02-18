@@ -1,5 +1,6 @@
 import {
   IconCamera,
+  IconCrown,
   IconDeviceMobile,
   IconEdit,
   IconKey,
@@ -7,15 +8,63 @@ import {
   IconShieldLock,
   IconUser,
 } from "@tabler/icons-react";
+import { useEffect, useMemo, useState } from "react";
+import toast from "react-hot-toast";
 import PageHeader from "../components/common/PageHeader";
+import PlanCard from "../components/PlanCard";
 import { useAuth } from "../context/AuthContext";
 import { useProfileSettings } from "../hooks/useProfileSettings";
 import { usePasswordSettings } from "../hooks/usePasswordSettings";
+import {
+  SUBSCRIPTION_PLANS,
+  normalizePlanId,
+} from "../const/subscriptionPlans";
+import { createCheckoutSession } from "../services/billingApi";
+import { auth } from "../services/firebase";
 
 export default function Settings() {
-  const { user, setUser } = useAuth();
+  const { user, setUser, isSubscribed } = useAuth();
   const profile = useProfileSettings(user, setUser);
   const password = usePasswordSettings();
+  const [planLoadingId, setPlanLoadingId] = useState(null);
+  const [selectedPlanId, setSelectedPlanId] = useState("small");
+  const isOwner = user?.role === "owner";
+  const activePlanId = normalizePlanId(user?.subscription_plan);
+  const activePlan = useMemo(
+    () =>
+      SUBSCRIPTION_PLANS.find((plan) => plan.id === activePlanId) ||
+      SUBSCRIPTION_PLANS[0],
+    [activePlanId],
+  );
+
+  useEffect(() => {
+    setSelectedPlanId(activePlanId);
+  }, [activePlanId]);
+
+  const handlePlanChange = async (plan) => {
+    if (!isOwner) return;
+    if (!auth.currentUser) {
+      toast.error("Not authenticated.");
+      return;
+    }
+
+    if (isSubscribed && plan.id === activePlanId) {
+      toast("You are already on this plan.");
+      return;
+    }
+
+    try {
+      setPlanLoadingId(plan.id);
+      const token = await auth.currentUser.getIdToken();
+      const { url } = await createCheckoutSession(plan.price_id, token);
+      window.location.href = url;
+    } catch (error) {
+      toast.error(error?.message || "Failed to change plan.");
+    } finally {
+      setPlanLoadingId(null);
+    }
+  };
+
   return (
     <section className="pb-8">
       <PageHeader
@@ -40,7 +89,9 @@ export default function Settings() {
                   )}
                 </div>
                 <div className="flex-1">
-                  <p className="text-lg font-semibold text-white">Profile Photo</p>
+                  <p className="text-lg font-semibold text-white">
+                    Profile Photo
+                  </p>
                   <p className="text-xs text-slate-400">
                     JPG, GIF or PNG. Max size 2MB.
                   </p>
@@ -96,9 +147,11 @@ export default function Settings() {
                   </label>
                 </div>
 
-                <div className="mt-4 flex items-center justify-between border-t border-slate-800/80 pt-4">
-                  <p className="text-xs text-slate-500">{profile.memberSince}</p>
-                  <div className="flex gap-2">
+                <div className="mt-4 flex flex-col gap-3 border-t border-slate-800/80 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs text-slate-500 sm:text-left">
+                    {profile.memberSince}
+                  </p>
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                     <button
                       type="button"
                       onClick={() => {
@@ -106,7 +159,7 @@ export default function Settings() {
                         profile.setIsEditing(false);
                       }}
                       disabled={profile.loading}
-                      className="rounded-lg border border-slate-700 bg-slate-800/70 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="w-full rounded-lg border border-slate-700 bg-slate-800/70 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                     >
                       Discard Changes
                     </button>
@@ -114,7 +167,7 @@ export default function Settings() {
                       type="button"
                       onClick={profile.saveProfile}
                       disabled={profile.loading}
-                      className="rounded-lg bg-primary-strong px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="w-full rounded-lg bg-primary-strong px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                     >
                       {profile.loading ? "Saving..." : "Save Changes"}
                     </button>
@@ -139,11 +192,15 @@ export default function Settings() {
                   )}
                 </div>
 
-                <div className="flex flex-col gap-1">
-                  <p className="text-lg font-semibold text-white">
-                    {profile.profileForm.name || user?.email?.split("@")[0] || "User"}
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <p className="truncate text-lg font-semibold text-white">
+                    {profile.profileForm.name ||
+                      user?.email?.split("@")[0] ||
+                      "User"}
                   </p>
-                  <p className="text-sm text-slate-400">{user?.email}</p>
+                  <p className="break-all text-sm text-slate-400">
+                    {user?.email}
+                  </p>
                   <p className="text-xs text-slate-500">
                     {profile.memberSince || "Member"}
                   </p>
@@ -196,6 +253,7 @@ export default function Settings() {
                         currentPassword: e.target.value,
                       }))
                     }
+                    autoComplete="new-password"
                     placeholder="Current password"
                     className="w-full rounded-lg border border-slate-700/90 bg-slate-900 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500/70 focus:outline-none"
                   />
@@ -225,7 +283,7 @@ export default function Settings() {
                   />
                 </div>
 
-                <div className="mt-4 flex gap-2">
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                   <button
                     type="button"
                     onClick={() => {
@@ -280,6 +338,63 @@ export default function Settings() {
               Authenticator App (Firebase MFA)
             </div>
           </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800/80 bg-dashboard-card p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300">
+                <IconCrown size={18} />
+              </span>
+              <div>
+                <p className="font-semibold text-slate-100">
+                  Subscription Plan
+                </p>
+                <p className="text-xs text-slate-400">
+                  {isOwner
+                    ? "Only owner can change subscription plans."
+                    : "Your plan is managed by your family owner."}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {isOwner ? (
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              {SUBSCRIPTION_PLANS.map((plan) => {
+                const isActive = plan.id === activePlanId;
+                const loading = planLoadingId === plan.id;
+
+                return (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    selected={selectedPlanId === plan.id}
+                    onSelect={() => setSelectedPlanId(plan.id)}
+                    onSubscribe={() => handlePlanChange(plan)}
+                    showSelector
+                    showSubscribeButton
+                    subscribeLoading={loading}
+                    subscribeDisabled={isSubscribed && isActive}
+                    subscribeLabel={
+                      isSubscribed && isActive
+                        ? "Current Plan"
+                        : isSubscribed
+                          ? `Switch to ${plan.title}`
+                          : `Select ${plan.title}`
+                    }
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-slate-800/80 bg-slate-900/40 p-4 text-sm text-slate-300">
+              Active plan:{" "}
+              <span className="font-semibold text-slate-100">
+                {activePlan.title}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </section>
