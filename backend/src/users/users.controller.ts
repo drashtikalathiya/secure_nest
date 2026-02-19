@@ -6,8 +6,11 @@ import {
   Param,
   Patch,
   Req,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { UsersService } from './users.service';
 import { sendError, sendSuccess } from '../utils/responseHandler';
@@ -35,6 +38,32 @@ export class UsersController {
       return sendSuccess('Family members fetched successfully', members);
     } catch (error) {
       return sendError('Failed to fetch family members', getErrorMessage(error));
+    }
+  }
+
+  @UseGuards(FirebaseAuthGuard)
+  @Patch('me/profile-photo')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadMyProfilePhoto(
+    @Req() req,
+    @UploadedFile() file: { buffer: Buffer; mimetype: string; size: number },
+  ) {
+    try {
+      const user = await this.usersService.uploadMyProfilePhoto(req.user.uid, file);
+      return sendSuccess('Profile photo updated successfully', user);
+    } catch (error) {
+      return sendError('Failed to update profile photo', getErrorMessage(error));
+    }
+  }
+
+  @UseGuards(FirebaseAuthGuard)
+  @Delete('me/profile-photo')
+  async removeMyProfilePhoto(@Req() req) {
+    try {
+      const user = await this.usersService.removeMyProfilePhoto(req.user.uid);
+      return sendSuccess('Profile photo removed successfully', user);
+    } catch (error) {
+      return sendError('Failed to remove profile photo', getErrorMessage(error));
     }
   }
 

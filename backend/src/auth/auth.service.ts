@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -10,6 +11,7 @@ import { User } from '../users/user.entity';
 import admin from '../../config/firebase-admin';
 import { InvitationsService } from '../invitations/invitations.service';
 import { getErrorMessage } from '../utils/errorMessage';
+import { CloudinaryService } from '../users/cloudinary.service';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +19,29 @@ export class AuthService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly invitationsService: InvitationsService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
+
+  async uploadSignupProfilePhoto(
+    firebaseUser: any,
+    file?: { buffer: Buffer; mimetype: string; size: number },
+  ): Promise<string> {
+    this.validateProfilePhoto(file);
+
+    const firebaseUid =
+      typeof firebaseUser?.uid === 'string' ? firebaseUser.uid.trim() : '';
+    if (!firebaseUid) {
+      throw new BadRequestException('Invalid firebase user.');
+    }
+
+    try {
+      return await this.cloudinaryService.uploadProfilePhoto(file!, firebaseUid);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        this.getSafeErrorMessage(error, 'Failed to upload profile photo.'),
+      );
+    }
+  }
 
   async validateUser(firebaseUser: any): Promise<any> {
     const { uid } = firebaseUser;
@@ -220,5 +244,29 @@ export class AuthService {
         message: getErrorMessage(error),
       });
     }
+  }
+
+  private validateProfilePhoto(
+    file?: { mimetype: string; size: number },
+  ): void {
+    if (!file) {
+      throw new BadRequestException('Profile photo file is required.');
+    }
+
+    if (!file.mimetype?.startsWith('image/')) {
+      throw new BadRequestException('Only image files are allowed.');
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      throw new BadRequestException('Profile photo must be 2MB or smaller.');
+    }
+  }
+
+  private getSafeErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+
+    return fallback;
   }
 }

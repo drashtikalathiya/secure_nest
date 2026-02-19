@@ -10,6 +10,7 @@ import { Repository } from 'typeorm';
 import admin from '../../config/firebase-admin';
 import { Invitation } from '../invitations/invitation.entity';
 import { User } from './user.entity';
+import { CloudinaryService } from './cloudinary.service';
 
 @Injectable()
 export class UsersService {
@@ -18,6 +19,7 @@ export class UsersService {
     private userRepo: Repository<User>,
     @InjectRepository(Invitation)
     private inviteRepo: Repository<Invitation>,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   async findAll(): Promise<User[]> {
@@ -56,50 +58,82 @@ export class UsersService {
     });
   }
 
-  async updateMyProfile(firebaseUid: string, body: any): Promise<User> {
-    const requester = await this.userRepo.findOne({
-      where: { firebase_uid: firebaseUid },
-    });
+  async uploadMyProfilePhoto(
+    firebaseUid: string,
+    file?: { buffer: Buffer; mimetype: string; size: number },
+  ): Promise<User> {
+    const requester = await this.findByFirebaseUidOrThrow(firebaseUid);
 
-    if (!requester) {
-      throw new NotFoundException('User account was not found.');
+    this.validateProfilePhoto(file);
+
+    let nextPhotoUrl: string;
+    try {
+      nextPhotoUrl = await this.cloudinaryService.uploadProfilePhoto(
+        file!,
+        requester.firebase_uid,
+      );
+    } catch (error) {
+      throw new InternalServerErrorException(
+        this.getErrorMessage(error, 'Failed to upload profile photo.'),
+      );
     }
 
+    await this.syncProfile(requester, requester.name, nextPhotoUrl);
+
+    return this.findByIdOrThrow(requester.id);
+  }
+
+  async removeMyProfilePhoto(firebaseUid: string): Promise<User> {
+    const requester = await this.findByFirebaseUidOrThrow(firebaseUid);
+
+    if (requester.profile_photo_url) {
+      try {
+        await this.cloudinaryService.deleteProfilePhotoByKey(
+          requester.firebase_uid,
+        );
+
+        // Clean up legacy URLs that may have used a different public ID.
+        await this.cloudinaryService.deleteByUrl(requester.profile_photo_url);
+      } catch (error) {
+        throw new InternalServerErrorException(
+          this.getErrorMessage(error, 'Failed to remove profile photo.'),
+        );
+      }
+    }
+
+    await this.syncProfile(requester, requester.name, null);
+
+    return this.findByIdOrThrow(requester.id);
+  }
+
+  async updateMyProfile(firebaseUid: string, body: any): Promise<User> {
+    const requester = await this.findByFirebaseUidOrThrow(firebaseUid);
+
     const nextName =
-      body?.name !== undefined ? this.requireField(body?.name, 'Name is required.') : requester.name;
+      body?.name !== undefined
+        ? this.requireField(body?.name, 'Name is required.')
+        : requester.name;
     const nextPhotoUrl =
       body?.profilePhotoUrl !== undefined
         ? this.cleanNullable(body?.profilePhotoUrl)
         : requester.profile_photo_url;
 
-    try {
-      await admin.auth().updateUser(requester.firebase_uid, {
-        ...(nextName ? { displayName: nextName } : {}),
-        ...(nextPhotoUrl ? { photoURL: nextPhotoUrl } : {}),
-      });
-    } catch {
-      throw new InternalServerErrorException(
-        'Failed to sync profile with Firebase.',
-      );
+    if (body?.profilePhotoUrl === null && requester.profile_photo_url) {
+      try {
+        await this.cloudinaryService.deleteProfilePhotoByKey(
+          requester.firebase_uid,
+        );
+        await this.cloudinaryService.deleteByUrl(requester.profile_photo_url);
+      } catch (error) {
+        throw new InternalServerErrorException(
+          this.getErrorMessage(error, 'Failed to remove profile photo.'),
+        );
+      }
     }
 
-    await this.userRepo.update(
-      { id: requester.id },
-      {
-        name: nextName,
-        profile_photo_url: nextPhotoUrl,
-      },
-    );
+    await this.syncProfile(requester, nextName, nextPhotoUrl);
 
-    const updated = await this.userRepo.findOne({
-      where: { id: requester.id },
-    });
-
-    if (!updated) {
-      throw new NotFoundException('User account was not found.');
-    }
-
-    return updated;
+    return this.findByIdOrThrow(requester.id);
   }
 
   async updateMemberPermissions(
@@ -208,6 +242,79 @@ export class UsersService {
     });
 
     await this.userRepo.delete({ id: member.id });
+  }
+
+  private async findByFirebaseUidOrThrow(firebaseUid: string): Promise<User> {
+    const user = await this.userRepo.findOne({
+      where: { firebase_uid: firebaseUid },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User account was not found.');
+    }
+
+    return user;
+  }
+
+  private async findByIdOrThrow(id: string): Promise<User> {
+    const user = await this.userRepo.findOne({
+      where: { id },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User account was not found.');
+    }
+
+    return user;
+  }
+
+  private async syncProfile(
+    user: User,
+    nextName: string | null,
+    nextPhotoUrl: string | null,
+  ): Promise<void> {
+    try {
+      await admin.auth().updateUser(user.firebase_uid, {
+        ...(nextName ? { displayName: nextName } : {}),
+        ...(nextPhotoUrl ? { photoURL: nextPhotoUrl } : { photoURL: null }),
+      });
+    } catch {
+      throw new InternalServerErrorException(
+        'Failed to sync profile with Firebase.',
+      );
+    }
+
+    await this.userRepo.update(
+      { id: user.id },
+      {
+        name: nextName,
+        profile_photo_url: nextPhotoUrl,
+      },
+    );
+  }
+
+  private validateProfilePhoto(
+    file?: { mimetype: string; size: number },
+  ): void {
+    if (!file) {
+      throw new BadRequestException('Profile photo file is required.');
+    }
+
+    if (!file.mimetype?.startsWith('image/')) {
+      throw new BadRequestException('Only image files are allowed.');
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      throw new BadRequestException('Profile photo must be 2MB or smaller.');
+    }
+  }
+
+  private getErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+
+    return fallback;
   }
 
   private cleanNullable(value: any): string | null {

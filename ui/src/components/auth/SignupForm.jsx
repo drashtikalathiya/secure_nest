@@ -13,8 +13,11 @@ import {
   firebaseSignup,
   updateFirebaseUserProfile,
 } from "../../services/firebaseAuth";
-import { backendSignup, getPostLoginPath } from "../../services/authApi";
-import { uploadImageToCloudinary } from "../../services/cloudinaryApi";
+import {
+  backendSignup,
+  getPostLoginPath,
+  uploadSignupProfilePhoto,
+} from "../../services/authApi";
 import { validateSignup } from "../../utils/validators";
 import toast from "react-hot-toast";
 
@@ -85,12 +88,13 @@ export default function SignupForm() {
       setError({});
       let uploadedPhotoUrl = null;
 
-      if (profileImage) {
-        const uploadRes = await uploadImageToCloudinary(profileImage);
-        uploadedPhotoUrl = uploadRes.secure_url;
-      }
-
       const firebaseUser = await firebaseSignup(email, password);
+      const idToken = await firebaseUser.getIdToken();
+
+      if (profileImage) {
+        const uploadRes = await uploadSignupProfilePhoto(idToken, profileImage);
+        uploadedPhotoUrl = uploadRes?.data?.profile_photo_url || null;
+      }
 
       const profilePayload = {
         displayName: fullName.trim(),
@@ -99,8 +103,6 @@ export default function SignupForm() {
         profilePayload.photoURL = uploadedPhotoUrl;
       }
       await updateFirebaseUserProfile(firebaseUser, profilePayload);
-
-      const idToken = await firebaseUser.getIdToken();
 
       const { data } = await backendSignup(idToken, {
         name: fullName,

@@ -17,6 +17,42 @@ export const getFamilyMembers = async (token) => {
   return data;
 };
 
+export const uploadMyProfilePhoto = async (token, file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch(`${API_URL}/users/me/profile-photo`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data?.success) {
+    throw new Error(getApiError(data, "Failed to upload profile photo"));
+  }
+
+  return data;
+};
+
+export const removeMyProfilePhoto = async (token) => {
+  const res = await fetch(`${API_URL}/users/me/profile-photo`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data?.success) {
+    throw new Error(getApiError(data, "Failed to remove profile photo"));
+  }
+
+  return data;
+};
+
 export const updateMyProfile = async (token, body) => {
   const res = await fetch(`${API_URL}/users/me`, {
     method: "PATCH",

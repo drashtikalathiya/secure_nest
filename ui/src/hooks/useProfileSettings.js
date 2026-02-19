@@ -2,8 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { auth } from "../services/firebase";
 import { updateFirebaseUserProfile } from "../services/firebaseAuth";
-import { getFamilyMembers, updateMyProfile } from "../services/usersApi";
-import { uploadImageToCloudinary } from "../services/cloudinaryApi";
+import {
+  getFamilyMembers,
+  removeMyProfilePhoto,
+  updateMyProfile,
+  uploadMyProfilePhoto,
+} from "../services/usersApi";
 
 export function useProfileSettings(user, setUser) {
   const fileInputRef = useRef(null);
@@ -83,24 +87,14 @@ export function useProfileSettings(user, setUser) {
 
     try {
       setUploadingPhoto(true);
-      const profilePublicId = user?.uid
-        ? `secure-nest/profile/${user.uid}`
-        : undefined;
-      const uploaded = await uploadImageToCloudinary(file, {
-        publicId: profilePublicId,
-      });
-      const nextPhotoUrl = uploaded.secure_url || "";
+
+      const res = await withToken((token) => uploadMyProfilePhoto(token, file));
+      const nextPhotoUrl = res?.data?.profile_photo_url || "";
 
       setProfileForm((prev) => ({
         ...prev,
         profilePhotoUrl: nextPhotoUrl,
       }));
-
-      await withToken((token) =>
-        updateMyProfile(token, {
-          profilePhotoUrl: nextPhotoUrl || null,
-        }),
-      );
 
       await updateFirebaseUserProfile(auth.currentUser, {
         photoURL: nextPhotoUrl || null,
@@ -108,7 +102,7 @@ export function useProfileSettings(user, setUser) {
 
       setUser((prev) => ({
         ...prev,
-        profile_photo_url: nextPhotoUrl || "",
+        profile_photo_url: nextPhotoUrl,
       }));
 
       toast.success("Profile photo updated.");
@@ -130,11 +124,7 @@ export function useProfileSettings(user, setUser) {
     }));
 
     try {
-      await withToken((token) =>
-        updateMyProfile(token, {
-          profilePhotoUrl: null,
-        }),
-      );
+      await withToken((token) => removeMyProfilePhoto(token));
 
       await updateFirebaseUserProfile(auth.currentUser, {
         photoURL: null,

@@ -30,6 +30,21 @@ export const backendSignup = async (token, body) => {
   return parseApiResponse(res, "Signup failed");
 };
 
+export const uploadSignupProfilePhoto = async (token, file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch(`${API_URL}/auth/profile-photo`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+  return parseApiResponse(res, "Profile photo upload failed");
+};
+
 export const backendLogin = async (token) => {
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",

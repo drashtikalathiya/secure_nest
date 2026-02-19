@@ -1,4 +1,13 @@
-import { Controller, Post, Req, UseGuards, Body } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { FirebaseAuthGuard } from './firebase-auth.guard';
 import { AuthService } from './auth.service';
 import { sendSuccess, sendError } from '../utils/responseHandler';
@@ -47,6 +56,26 @@ export class AuthController {
       });
     } catch (error) {
       return sendError('Registration failed', getErrorMessage(error));
+    }
+  }
+
+  @UseGuards(FirebaseAuthGuard)
+  @Post('profile-photo')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadProfilePhoto(
+    @Req() req,
+    @UploadedFile() file: { buffer: Buffer; mimetype: string; size: number },
+  ) {
+    try {
+      const profile_photo_url = await this.authService.uploadSignupProfilePhoto(
+        req.user,
+        file,
+      );
+      return sendSuccess('Profile photo uploaded successfully', {
+        profile_photo_url,
+      });
+    } catch (error) {
+      return sendError('Failed to upload profile photo', getErrorMessage(error));
     }
   }
 }
