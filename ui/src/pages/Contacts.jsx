@@ -15,6 +15,7 @@ import {
   getContacts,
   updateContact,
 } from "../services/contactsApi";
+import { PAGE_META } from "../const/pageMeta";
 
 const emptyNewContactForm = {
   name: "",
@@ -39,6 +40,7 @@ export default function Contacts() {
   const [newContactForm, setNewContactForm] = useState(emptyNewContactForm);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const pageTitle = PAGE_META["/contacts"];
 
   const filteredContacts = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -172,8 +174,8 @@ export default function Contacts() {
   return (
     <section>
       <PageHeader
-        title="Emergency Contacts"
-        subtitle="Critical contacts accessible during urgent situations."
+        title={pageTitle.title}
+        subtitle={pageTitle.subtitle}
         right={
           <button
             type="button"

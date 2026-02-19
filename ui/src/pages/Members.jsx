@@ -23,6 +23,7 @@ import {
   getFamilyMembers,
   updateMemberPermissions,
 } from "../services/usersApi";
+import { PAGE_META } from "../const/pageMeta";
 
 const ROLE_STYLES = {
   Owner: "bg-sky-500/20 text-sky-300",
@@ -123,6 +124,7 @@ export default function Members() {
 
   const [memberToDelete, setMemberToDelete] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const pageTitle = PAGE_META["/members"];
 
   const resetInviteForm = () => {
     setInviteEmail("");
@@ -324,8 +326,8 @@ export default function Members() {
     <section>
       <div>
         <PageHeader
-          title="Family Members"
-          subtitle="Manage active members, invitations, and permissions in one place."
+          title={pageTitle.title}
+          subtitle={pageTitle.subtitle}
           right={
             isOwner ? (
               <button

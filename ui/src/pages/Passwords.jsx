@@ -23,6 +23,7 @@ import {
   getPasswords,
   updatePassword,
 } from "../services/passwordsApi";
+import { PAGE_META } from "../const/pageMeta";
 
 const getRowKey = (item) => item.id || `${item.name}-${item.value}`;
 
@@ -59,6 +60,7 @@ export default function Passwords() {
   const [favoriteKeys, setFavoriteKeys] = useState({});
   const [currentUserId, setCurrentUserId] = useState(null);
   const [familyOptions, setFamilyOptions] = useState([]);
+  const pageTitle = PAGE_META["/passwords"];
 
   const [form, setForm] = useState({
     name: "",
@@ -254,8 +256,8 @@ export default function Passwords() {
   return (
     <section>
       <PageHeader
-        title="Passwords"
-        subtitle="Manage saved credentials with visibility controls for your family."
+        title={pageTitle.title}
+        subtitle={pageTitle.subtitle}
         right={
           <button
             type="button"

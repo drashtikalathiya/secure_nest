@@ -21,6 +21,7 @@ import DocumentGridCard from "../components/documents/DocumentGridCard";
 import DocumentTable from "../components/documents/DocumentTable";
 import PageHeader from "../components/common/PageHeader";
 import { FOLDER_STYLE_COLORS, INITIAL_FOLDERS } from "../const/documentsData";
+import { PAGE_META } from "../const/pageMeta";
 
 const FOLDER_ICONS = {
   folder: IconFolder,
@@ -59,7 +60,7 @@ function toRecentFileItems(folders) {
         folderColor: folder.color,
       })),
     )
-    .slice(0, 6);
+    .slice(0, 4);
 }
 
 export default function Documents() {
@@ -76,6 +77,8 @@ export default function Documents() {
   const [editDocumentTarget, setEditDocumentTarget] = useState(null);
   const [deleteDocumentTarget, setDeleteDocumentTarget] = useState(null);
 
+  const pageTitle = PAGE_META["/documents"];
+
   const selectedFolder = useMemo(
     () => folders.find((folder) => folder.id === selectedFolderId) || null,
     [folders, selectedFolderId],
@@ -83,7 +86,13 @@ export default function Documents() {
 
   const recentFiles = useMemo(() => toRecentFileItems(folders), [folders]);
 
-  const handleCreateFolder = ({ name, color, icon, visibility, sharedWith }) => {
+  const handleCreateFolder = ({
+    name,
+    color,
+    icon,
+    visibility,
+    sharedWith,
+  }) => {
     const newFolder = {
       id: `folder-${Date.now()}`,
       name,
@@ -102,7 +111,9 @@ export default function Documents() {
   const handleDeleteFolder = () => {
     if (!deleteFolderTarget?.id) return;
 
-    setFolders((prev) => prev.filter((folder) => folder.id !== deleteFolderTarget.id));
+    setFolders((prev) =>
+      prev.filter((folder) => folder.id !== deleteFolderTarget.id),
+    );
 
     if (selectedFolderId === deleteFolderTarget.id) {
       setSelectedFolderId(null);
@@ -166,7 +177,8 @@ export default function Documents() {
     visibility,
     sharedWith,
   }) => {
-    if (!editDocumentTarget?.folderId || !editDocumentTarget?.documentId) return;
+    if (!editDocumentTarget?.folderId || !editDocumentTarget?.documentId)
+      return;
 
     const sourceFolderId = editDocumentTarget.folderId;
     const destinationFolderId = folderId || sourceFolderId;
@@ -203,7 +215,9 @@ export default function Documents() {
         if (folder.id === sourceFolderId) {
           return {
             ...folder,
-            files: folder.files.filter((doc) => doc.id !== editDocumentTarget.documentId),
+            files: folder.files.filter(
+              (doc) => doc.id !== editDocumentTarget.documentId,
+            ),
           };
         }
         if (folder.id === destinationFolderId) {
@@ -221,7 +235,8 @@ export default function Documents() {
   };
 
   const handleDeleteDocument = () => {
-    if (!deleteDocumentTarget?.folderId || !deleteDocumentTarget?.documentId) return;
+    if (!deleteDocumentTarget?.folderId || !deleteDocumentTarget?.documentId)
+      return;
 
     setFolders((prev) =>
       prev.map((folder) => {
@@ -229,7 +244,9 @@ export default function Documents() {
 
         return {
           ...folder,
-          files: folder.files.filter((doc) => doc.id !== deleteDocumentTarget.documentId),
+          files: folder.files.filter(
+            (doc) => doc.id !== deleteDocumentTarget.documentId,
+          ),
         };
       }),
     );
@@ -248,19 +265,18 @@ export default function Documents() {
 
   const renderFolderCard = (folder) => {
     const FolderIcon = FOLDER_ICONS[folder.icon] || IconFolder;
-    const styleClasses = FOLDER_STYLE_COLORS[folder.color] || FOLDER_STYLE_COLORS.slate;
+    const styleClasses =
+      FOLDER_STYLE_COLORS[folder.color] || FOLDER_STYLE_COLORS.slate;
     const totals = getFolderTotals(folder.files);
 
     return (
-      <button
+      <div
         key={folder.id}
-        type="button"
         onClick={() => setSelectedFolderId(folder.id)}
-        className="group relative rounded-2xl border border-slate-800/80 bg-dashboard-card p-4 text-left transition hover:border-slate-700 hover:bg-slate-900/70"
+        className="group relative rounded-2xl border cursor-pointer border-slate-800/80 bg-dashboard-card p-4 text-left transition hover:border-slate-700 hover:bg-slate-900/70"
       >
         <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
           <button
-            type="button"
             onClick={(event) => {
               event.stopPropagation();
               setDeleteFolderTarget(folder);
@@ -279,9 +295,10 @@ export default function Documents() {
         </span>
         <p className="text-sm font-semibold text-slate-100">{folder.name}</p>
         <p className="mt-1 text-xs text-slate-500">
-          {totals.fileCount} file{totals.fileCount === 1 ? "" : "s"} • {formatSize(totals.totalSize)}
+          {totals.fileCount} file{totals.fileCount === 1 ? "" : "s"} •{" "}
+          {formatSize(totals.totalSize)}
         </p>
-      </button>
+      </div>
     );
   };
 
@@ -303,7 +320,9 @@ export default function Documents() {
                 <IconArrowLeft size={20} />
                 Back to Folders
               </button>
-              <h1 className="mt-1 text-3xl font-semibold text-white">{selectedFolder.name}</h1>
+              <h1 className="mt-1 text-3xl font-semibold text-white">
+                {selectedFolder.name}
+              </h1>
               <p className="mt-1 text-sm text-slate-400">
                 {totals.fileCount} files • Last updated 2 hours ago
               </p>
@@ -354,8 +373,12 @@ export default function Documents() {
                 <DocumentGridCard
                   key={file.id}
                   file={file}
-                  onEditClick={() => handleOpenEditDocument(file, selectedFolder.id)}
-                  onDeleteClick={() => openDeleteDocument(file, selectedFolder.id)}
+                  onEditClick={() =>
+                    handleOpenEditDocument(file, selectedFolder.id)
+                  }
+                  onDeleteClick={() =>
+                    openDeleteDocument(file, selectedFolder.id)
+                  }
                 />
               ))}
 
@@ -375,8 +398,12 @@ export default function Documents() {
               <DocumentTable
                 files={selectedFolder.files}
                 variant="folder"
-                onEditClick={(file) => handleOpenEditDocument(file, selectedFolder.id)}
-                onDeleteClick={(file) => openDeleteDocument(file, selectedFolder.id)}
+                onEditClick={(file) =>
+                  handleOpenEditDocument(file, selectedFolder.id)
+                }
+                onDeleteClick={(file) =>
+                  openDeleteDocument(file, selectedFolder.id)
+                }
               />
             </div>
           )}
@@ -388,7 +415,10 @@ export default function Documents() {
             setUploadSliderOpen(false);
             setEditDocumentTarget(null);
           }}
-          folderOptions={folders.map((folder) => ({ id: folder.id, name: folder.name }))}
+          folderOptions={folders.map((folder) => ({
+            id: folder.id,
+            name: folder.name,
+          }))}
           defaultFolderId={editDocumentTarget?.folderId || selectedFolder.id}
           onUpload={handleUploadDocument}
           onUpdate={handleUpdateDocument}
@@ -413,8 +443,8 @@ export default function Documents() {
   return (
     <section className="pb-6">
       <PageHeader
-        title="Legal Documents"
-        subtitle="Upload, organize, and securely share important family files."
+        title={pageTitle.title}
+        subtitle={pageTitle.subtitle}
         right={
           <div className="flex items-center gap-2">
             <button
@@ -441,7 +471,10 @@ export default function Documents() {
         <div>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white">Categories</h2>
-            <button type="button" className="text-xs font-semibold text-sky-300 hover:text-sky-200">
+            <button
+              type="button"
+              className="text-xs font-semibold text-sky-300 hover:text-sky-200"
+            >
               View All
             </button>
           </div>
@@ -452,7 +485,9 @@ export default function Documents() {
 
         <div>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">Recent Documents</h2>
+            <h2 className="text-lg font-semibold text-white">
+              Recent Documents
+            </h2>
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -487,7 +522,9 @@ export default function Documents() {
                 <DocumentGridCard
                   key={file.id}
                   file={file}
-                  onEditClick={() => handleOpenEditDocument(file, file.folderId)}
+                  onEditClick={() =>
+                    handleOpenEditDocument(file, file.folderId)
+                  }
                   onDeleteClick={() => openDeleteDocument(file, file.folderId)}
                 />
               ))}
@@ -496,7 +533,9 @@ export default function Documents() {
             <DocumentTable
               files={recentFiles}
               variant="recent"
-              onEditClick={(file) => handleOpenEditDocument(file, file.folderId)}
+              onEditClick={(file) =>
+                handleOpenEditDocument(file, file.folderId)
+              }
               onDeleteClick={(file) => openDeleteDocument(file, file.folderId)}
             />
           )}
@@ -526,7 +565,10 @@ export default function Documents() {
           setUploadSliderOpen(false);
           setEditDocumentTarget(null);
         }}
-        folderOptions={folders.map((folder) => ({ id: folder.id, name: folder.name }))}
+        folderOptions={folders.map((folder) => ({
+          id: folder.id,
+          name: folder.name,
+        }))}
         defaultFolderId={editDocumentTarget?.folderId}
         onUpload={handleUploadDocument}
         onUpdate={handleUpdateDocument}

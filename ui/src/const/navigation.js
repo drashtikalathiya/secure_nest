@@ -4,8 +4,6 @@ import {
   IconKey,
   IconAddressBook,
   IconFileText,
-  IconCreditCard,
-  IconHeartbeat,
   IconSettings,
 } from "@tabler/icons-react";
 
@@ -15,7 +13,5 @@ export const NAV_ITEMS = [
   { label: "Passwords", to: "/passwords", icon: IconKey },
   { label: "Contacts", to: "/contacts", icon: IconAddressBook },
   { label: "Documents", to: "/documents", icon: IconFileText },
-  { label: "Finance", to: "/finance", icon: IconCreditCard },
-  { label: "Medical Records", to: "/medical", icon: IconHeartbeat },
   { label: "Settings", to: "/settings", icon: IconSettings },
 ];

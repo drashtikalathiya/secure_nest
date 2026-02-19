@@ -19,13 +19,4 @@ export const PAGE_META = {
     title: "Documents",
     subtitle: "Secure and share important files in one place.",
   },
-  "/finance": {
-    title: "Finance Manager",
-    subtitle: "Track accounts, policies, and financial records safely.",
-  },
-  "/medical": {
-    title: "Family Medical Profiles",
-    subtitle:
-      "Securely manage health recorde and emergency info for your household.",
-  },
 };
