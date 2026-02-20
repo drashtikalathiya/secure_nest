@@ -12,6 +12,7 @@ import {
 import { firebaseLogout } from "../../services/firebaseAuth";
 import { NAV_ITEMS } from "../../const/navigation";
 import { useAuth } from "../../context/AuthContext";
+import { canViewModule } from "../../utils/permissions";
 
 function BrandBlock({ className = "" }) {
   return (
@@ -63,6 +64,10 @@ export default function AppLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const visibleNavItems = NAV_ITEMS.filter((item) => {
+    if (!item.moduleKey) return true;
+    return canViewModule(user, item.moduleKey);
+  });
 
   const displayName = user?.name?.trim() || user?.email?.split("@")?.[0];
   const roleLabel =
@@ -88,7 +93,7 @@ export default function AppLayout() {
           <BrandBlock />
 
           <div className="mt-7 space-y-2">
-            {NAV_ITEMS.map((item) => (
+            {visibleNavItems.map((item) => (
               <NavItem key={item.label} item={item} />
             ))}
           </div>
@@ -129,7 +134,7 @@ export default function AppLayout() {
               </div>
 
               <div className="mt-7 space-y-2">
-                {NAV_ITEMS.map((item) => (
+                {visibleNavItems.map((item) => (
                   <NavItem
                     key={item.label}
                     item={item}

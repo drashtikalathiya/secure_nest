@@ -14,6 +14,9 @@ export class Invitation {
   @Column({ default: 'member' })
   role: 'member';
 
+  @Column({ nullable: true })
+  permission_profile_id: string;
+
   @Column({ unique: true })
   token: string;
 

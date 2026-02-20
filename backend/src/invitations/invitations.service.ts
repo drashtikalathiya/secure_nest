@@ -14,6 +14,10 @@ import { Invitation } from './invitation.entity';
 import { User } from '../users/user.entity';
 import { getErrorMessage } from '../utils/errorMessage';
 import { getPlanMemberLimit, SubscriptionPlan } from '../billing/subscription-plan';
+import {
+  DEFAULT_MEMBER_PERMISSIONS,
+} from '../permissions/permissions.utils';
+import { PermissionsService } from '../permissions/permissions.service';
 
 const INVITE_EXPIRY_DAYS = 7;
 
@@ -24,6 +28,7 @@ export class InvitationsService {
     private inviteRepo: Repository<Invitation>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    private permissionsService: PermissionsService,
   ) {}
 
   async createInvitation(firebaseUid: string, body: any) {
@@ -49,6 +54,12 @@ export class InvitationsService {
 
     await this.ensureEmailIsInvitable(email, owner.id);
 
+    const permissionProfileId = await this.permissionsService.createProfile(
+      owner.id,
+      body,
+      DEFAULT_MEMBER_PERMISSIONS,
+    );
+
     const { token, expiresAt, inviteLink } = this.generateInviteAccess();
 
     await this.sendInvitationEmail({
@@ -62,6 +73,7 @@ export class InvitationsService {
       owner_id: owner.id,
       email,
       role: 'member',
+      permission_profile_id: permissionProfileId,
       token,
       status: 'pending',
       expires_at: expiresAt,
@@ -70,7 +82,7 @@ export class InvitationsService {
     const savedInvite = await this.inviteRepo.save(invite);
 
     return {
-      ...this.mapInviteResponse(savedInvite),
+      ...(await this.mapInviteResponse(savedInvite)),
       invite_link: inviteLink,
     };
   }
@@ -81,10 +93,12 @@ export class InvitationsService {
       'Only an owner can view invitations.',
     );
 
-    return this.inviteRepo.find({
+    const invites = await this.inviteRepo.find({
       where: { owner_id: owner.id, status: 'pending' },
       order: { created_at: 'DESC' },
     });
+
+    return Promise.all(invites.map((invite) => this.mapInviteResponse(invite)));
   }
 
   async resendInvitation(firebaseUid: string, invitationId: string) {
@@ -111,7 +125,7 @@ export class InvitationsService {
     });
 
     return {
-      ...this.mapInviteResponse({ ...invite, token, expires_at: expiresAt }),
+      ...(await this.mapInviteResponse({ ...invite, token, expires_at: expiresAt })),
       invite_link: inviteLink,
     };
   }
@@ -128,6 +142,7 @@ export class InvitationsService {
 
   async validateToken(token: string) {
     const invite = await this.getInviteByToken(token);
+    const permissions = await this.mapInvitePermissions(invite);
 
     if (invite.status !== 'pending') {
       return {
@@ -135,6 +150,7 @@ export class InvitationsService {
         reason: invite.status === 'accepted' ? 'ALREADY_ACCEPTED' : 'INVALID',
         email: invite.email,
         role: invite.role,
+        permissions,
       };
     }
 
@@ -144,6 +160,7 @@ export class InvitationsService {
         reason: 'EXPIRED',
         email: invite.email,
         role: invite.role,
+        permissions,
       };
     }
 
@@ -158,6 +175,7 @@ export class InvitationsService {
       status: invite.status,
       expires_at: invite.expires_at,
       has_account: Boolean(existingUser),
+      permissions,
     };
   }
 
@@ -282,7 +300,7 @@ export class InvitationsService {
     return { owner, invite };
   }
 
-  private mapInviteResponse(invite: Partial<Invitation>) {
+  private async mapInviteResponse(invite: Partial<Invitation>) {
     return {
       id: invite.id,
       email: invite.email,
@@ -290,6 +308,7 @@ export class InvitationsService {
       status: invite.status,
       token: invite.token,
       expires_at: invite.expires_at,
+      permissions: await this.mapInvitePermissions(invite),
     };
   }
 
@@ -365,6 +384,7 @@ export class InvitationsService {
     await this.userRepo.update(user.id, {
       role: 'member',
       family_owner_id: owner.id,
+      permission_profile_id: invite.permission_profile_id || null,
     });
 
     await this.inviteRepo.update(invite.id, {
@@ -382,12 +402,26 @@ export class InvitationsService {
       owner.subscription_plan,
     );
 
+    const permissions = await this.mapInvitePermissions(invite);
+
     return {
       role: 'member',
       is_subscribed: effectiveSubscription,
       family_owner_id: owner.id,
       subscription_plan: owner.subscription_plan,
+      permission_password_access_level: permissions.passwordAccess,
+      permission_contacts_access_level: permissions.contactsAccess,
+      permission_documents_access_level: permissions.documentsAccess,
+      permission_invite_others: permissions.inviteOthers,
+      permission_export_data: permissions.exportData,
     };
+  }
+
+  private async mapInvitePermissions(invite: Partial<Invitation>) {
+    return this.permissionsService.getPayloadByProfileId(
+      invite.permission_profile_id,
+      DEFAULT_MEMBER_PERMISSIONS,
+    );
   }
 
   private async ensureOwnerWithinSubscriptionMemberLimit(owner: User) {
@@ -466,7 +500,7 @@ export class InvitationsService {
       await transporter.sendMail({
         from: `${process.env.MAIL_FROM_NAME || 'SecureNest'} <${
           process.env.MAIL_FROM || user
-        }>`,
+        }>` ,
         to: params.inviteeEmail,
         subject: `${params.ownerName} invited you to SecureNest`,
         text: `Accept invitation: ${params.inviteLink}`,

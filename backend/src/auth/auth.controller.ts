@@ -32,6 +32,11 @@ export class AuthController {
         is_subscribed: user.is_subscribed,
         subscription_plan: user.subscription_plan,
         family_owner_id: user.family_owner_id,
+        permission_password_access_level: user.permission_password_access_level,
+        permission_contacts_access_level: user.permission_contacts_access_level,
+        permission_documents_access_level: user.permission_documents_access_level,
+        permission_invite_others: user.permission_invite_others,
+        permission_export_data: user.permission_export_data,
       });
     } catch (error) {
       return sendError('Authentication failed', getErrorMessage(error));
@@ -53,6 +58,11 @@ export class AuthController {
         is_subscribed: user.is_subscribed,
         subscription_plan: user.subscription_plan,
         family_owner_id: user.family_owner_id,
+        permission_password_access_level: user.permission_password_access_level,
+        permission_contacts_access_level: user.permission_contacts_access_level,
+        permission_documents_access_level: user.permission_documents_access_level,
+        permission_invite_others: user.permission_invite_others,
+        permission_export_data: user.permission_export_data,
       });
     } catch (error) {
       return sendError('Registration failed', getErrorMessage(error));

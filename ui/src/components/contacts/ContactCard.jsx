@@ -48,26 +48,30 @@ export default function ContactCard({
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => onEdit(contact)}
-            disabled={!canEdit}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Edit contact"
-          >
-            <IconEdit size={15} />
-          </button>
-          <button
-            type="button"
-            disabled={!canDelete}
-            onClick={() => onDelete(contact)}
-            className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Delete contact"
-          >
-            <IconTrash size={15} />
-          </button>
-        </div>
+        {canEdit || canDelete ? (
+          <div className="flex items-center gap-1">
+            {canEdit ? (
+              <button
+                type="button"
+                onClick={() => onEdit(contact)}
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white"
+                aria-label="Edit contact"
+              >
+                <IconEdit size={15} />
+              </button>
+            ) : null}
+            {canDelete ? (
+              <button
+                type="button"
+                onClick={() => onDelete(contact)}
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-rose-300"
+                aria-label="Delete contact"
+              >
+                <IconTrash size={15} />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-2 text-xs text-slate-300">

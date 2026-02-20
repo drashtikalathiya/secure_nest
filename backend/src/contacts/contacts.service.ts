@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { Contact } from './contact.entity';
+import { PermissionsService } from '../permissions/permissions.service';
 
 @Injectable()
 export class ContactsService {
@@ -16,10 +17,16 @@ export class ContactsService {
     private contactRepo: Repository<Contact>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    private permissionsService: PermissionsService,
   ) {}
 
   async getContacts(firebaseUid: string) {
     const requester = await this.getRequester(firebaseUid);
+    const permissions = await this.permissionsService.getModuleCrudPermissions(
+      requester,
+      'contacts',
+    );
+    this.ensureCanViewContacts(permissions);
     const familyOwnerId = this.getFamilyOwnerId(requester);
 
     const contacts = await this.contactRepo.find({
@@ -29,11 +36,17 @@ export class ContactsService {
 
     return {
       items: contacts,
+      permissions,
     };
   }
 
   async createContact(firebaseUid: string, body: any): Promise<Contact> {
     const requester = await this.getRequester(firebaseUid);
+    const permissions = await this.permissionsService.getModuleCrudPermissions(
+      requester,
+      'contacts',
+    );
+    this.ensureCanEditContacts(permissions);
     const familyOwnerId = this.getFamilyOwnerId(requester);
 
     this.validateContactPayload(body);
@@ -60,6 +73,11 @@ export class ContactsService {
     body: any,
   ): Promise<Contact> {
     const requester = await this.getRequester(firebaseUid);
+    const permissions = await this.permissionsService.getModuleCrudPermissions(
+      requester,
+      'contacts',
+    );
+    this.ensureCanEditContacts(permissions);
 
     const familyOwnerId = this.getFamilyOwnerId(requester);
 
@@ -71,7 +89,10 @@ export class ContactsService {
       throw new NotFoundException('Contact not found in your family.');
     }
 
-    if (existing.created_by_user_id !== requester.id) {
+    if (
+      requester.role !== 'owner' &&
+      existing.created_by_user_id !== requester.id
+    ) {
       throw new ForbiddenException('Only creator can edit this contact.');
     }
 
@@ -102,6 +123,11 @@ export class ContactsService {
 
   async deleteContact(firebaseUid: string, contactId: string): Promise<void> {
     const requester = await this.getRequester(firebaseUid);
+    const permissions = await this.permissionsService.getModuleCrudPermissions(
+      requester,
+      'contacts',
+    );
+    this.ensureCanEditContacts(permissions);
 
     const familyOwnerId = this.getFamilyOwnerId(requester);
 
@@ -118,7 +144,10 @@ export class ContactsService {
       );
     }
 
-    if (existing.created_by_user_id !== requester.id) {
+    if (
+      requester.role !== 'owner' &&
+      existing.created_by_user_id !== requester.id
+    ) {
       throw new ForbiddenException('Only creator can delete this contact.');
     }
 
@@ -135,6 +164,30 @@ export class ContactsService {
     }
 
     return requester;
+  }
+
+  private ensureCanViewContacts(permissions: {
+    view: boolean;
+    edit: boolean;
+    delete: boolean;
+  }): void {
+    if (!permissions.view) {
+      throw new ForbiddenException(
+        'You do not have permission to view contacts.',
+      );
+    }
+  }
+
+  private ensureCanEditContacts(permissions: {
+    view: boolean;
+    edit: boolean;
+    delete: boolean;
+  }): void {
+    if (!permissions.edit) {
+      throw new ForbiddenException(
+        'You do not have permission to edit contacts.',
+      );
+    }
   }
 
   private getFamilyOwnerId(user: User): string {

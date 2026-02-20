@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginForm from "./components/auth/LoginForm";
 import SignupForm from "./components/auth/SignupForm";
 import {
+  PermissionRoute,
   ProtectedRoute,
   PublicRoute,
   SubscriptionRoute,
@@ -59,9 +60,30 @@ export default function App() {
         >
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/members" element={<Members />} />
-          <Route path="/passwords" element={<Passwords />} />
-          <Route path="/contacts" element={<Contacts />} />
-          <Route path="/documents" element={<Documents />} />
+          <Route
+            path="/passwords"
+            element={
+              <PermissionRoute moduleKey="passwords">
+                <Passwords />
+              </PermissionRoute>
+            }
+          />
+          <Route
+            path="/contacts"
+            element={
+              <PermissionRoute moduleKey="contacts">
+                <Contacts />
+              </PermissionRoute>
+            }
+          />
+          <Route
+            path="/documents"
+            element={
+              <PermissionRoute moduleKey="documents">
+                <Documents />
+              </PermissionRoute>
+            }
+          />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>

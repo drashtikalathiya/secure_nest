@@ -15,6 +15,7 @@ import {
 import { Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { PasswordRecord } from './password.entity';
+import { PermissionsService } from '../permissions/permissions.service';
 
 @Injectable()
 export class PasswordsService {
@@ -26,10 +27,16 @@ export class PasswordsService {
     private passwordRepo: Repository<PasswordRecord>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    private permissionsService: PermissionsService,
   ) {}
 
   async getPasswords(firebaseUid: string) {
     const requester = await this.getRequester(firebaseUid);
+    const permissions = await this.permissionsService.getModuleCrudPermissions(
+      requester,
+      'passwords',
+    );
+    this.ensureCanViewPasswords(permissions);
 
     const familyOwnerId = this.getFamilyOwnerId(requester);
 
@@ -44,7 +51,7 @@ export class PasswordsService {
 
     return {
       items: visibleItems.map((item) => this.withDecryptedPassword(item)),
-      permissions: { view: true, edit: true, delete: true },
+      permissions,
     };
   }
 
@@ -53,6 +60,11 @@ export class PasswordsService {
     body: any,
   ): Promise<PasswordRecord> {
     const requester = await this.getRequester(firebaseUid);
+    const permissions = await this.permissionsService.getModuleCrudPermissions(
+      requester,
+      'passwords',
+    );
+    this.ensureCanEditPasswords(permissions);
 
     const familyOwnerId = this.getFamilyOwnerId(requester);
 
@@ -94,6 +106,11 @@ export class PasswordsService {
     body: any,
   ): Promise<PasswordRecord> {
     const requester = await this.getRequester(firebaseUid);
+    const permissions = await this.permissionsService.getModuleCrudPermissions(
+      requester,
+      'passwords',
+    );
+    this.ensureCanEditPasswords(permissions);
     const familyOwnerId = this.getFamilyOwnerId(requester);
 
     const existing = await this.passwordRepo.findOne({
@@ -104,7 +121,10 @@ export class PasswordsService {
       throw new NotFoundException('Password record not found in your family.');
     }
 
-    if (existing.created_by_user_id !== requester.id) {
+    if (
+      requester.role !== 'owner' &&
+      existing.created_by_user_id !== requester.id
+    ) {
       throw new ForbiddenException(
         'Only the creator can edit this password record.',
       );
@@ -156,6 +176,11 @@ export class PasswordsService {
 
   async deletePassword(firebaseUid: string, passwordId: string): Promise<void> {
     const requester = await this.getRequester(firebaseUid);
+    const permissions = await this.permissionsService.getModuleCrudPermissions(
+      requester,
+      'passwords',
+    );
+    this.ensureCanEditPasswords(permissions);
     const familyOwnerId = this.getFamilyOwnerId(requester);
 
     const existing = await this.passwordRepo.findOne({
@@ -166,7 +191,10 @@ export class PasswordsService {
       throw new NotFoundException('Password record not found in your family.');
     }
 
-    if (existing.created_by_user_id !== requester.id) {
+    if (
+      requester.role !== 'owner' &&
+      existing.created_by_user_id !== requester.id
+    ) {
       throw new ForbiddenException(
         'Only the creator can delete this password record.',
       );
@@ -249,6 +277,30 @@ export class PasswordsService {
     }
 
     return requester;
+  }
+
+  private ensureCanViewPasswords(permissions: {
+    view: boolean;
+    edit: boolean;
+    delete: boolean;
+  }): void {
+    if (!permissions.view) {
+      throw new ForbiddenException(
+        'You do not have permission to view passwords.',
+      );
+    }
+  }
+
+  private ensureCanEditPasswords(permissions: {
+    view: boolean;
+    edit: boolean;
+    delete: boolean;
+  }): void {
+    if (!permissions.edit) {
+      throw new ForbiddenException(
+        'You do not have permission to edit passwords.',
+      );
+    }
   }
 
   private getFamilyOwnerId(user: User): string {
@@ -347,13 +399,8 @@ export class PasswordsService {
       ]);
 
       return decrypted.toString('utf8');
-    } catch (error) {
-      if (error instanceof InternalServerErrorException) {
-        throw error;
-      }
-      throw new InternalServerErrorException(
-        'Failed to decrypt stored password.',
-      );
+    } catch {
+      return value;
     }
   }
 }

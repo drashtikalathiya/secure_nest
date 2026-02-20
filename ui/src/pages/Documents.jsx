@@ -12,7 +12,7 @@ import {
   IconTrash,
   IconUpload,
 } from "@tabler/icons-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import ConfirmModal from "../components/common/ConfirmModal";
 import AddDocumentSlider from "../components/documents/AddDocumentSlider";
@@ -22,6 +22,9 @@ import DocumentTable from "../components/documents/DocumentTable";
 import PageHeader from "../components/common/PageHeader";
 import { FOLDER_STYLE_COLORS, INITIAL_FOLDERS } from "../const/documentsData";
 import { PAGE_META } from "../const/pageMeta";
+import { useAuth } from "../context/AuthContext";
+import { auth } from "../services/firebase";
+import { getFamilyMembers } from "../services/usersApi";
 
 const FOLDER_ICONS = {
   folder: IconFolder,
@@ -64,6 +67,12 @@ function toRecentFileItems(folders) {
 }
 
 export default function Documents() {
+  const { user } = useAuth();
+  const isOwner = user?.role === "owner";
+  const [canEditDocuments, setCanEditDocuments] = useState(
+    isOwner || user?.permission_documents_access_level === "edit",
+  );
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [folders, setFolders] = useState(INITIAL_FOLDERS);
   const [selectedFolderId, setSelectedFolderId] = useState(null);
 
@@ -86,6 +95,32 @@ export default function Documents() {
 
   const recentFiles = useMemo(() => toRecentFileItems(folders), [folders]);
 
+  const loadDocumentPermission = useCallback(async () => {
+    if (!auth.currentUser) return;
+
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const membersRes = await getFamilyMembers(token);
+      const members = Array.isArray(membersRes?.data) ? membersRes.data : [];
+      const me = members.find((member) => member.email === user?.email);
+
+      if (!me) return;
+
+      setCurrentUserId(me.id || null);
+      setCanEditDocuments(
+        me.role === "owner" || me.permission_documents_access_level === "edit",
+      );
+    } catch {
+      setCanEditDocuments(
+        isOwner || user?.permission_documents_access_level === "edit",
+      );
+    }
+  }, [isOwner, user?.email, user?.permission_documents_access_level]);
+
+  useEffect(() => {
+    loadDocumentPermission();
+  }, [loadDocumentPermission]);
+
   const handleCreateFolder = ({
     name,
     color,
@@ -93,6 +128,14 @@ export default function Documents() {
     visibility,
     sharedWith,
   }) => {
+    if (!isOwner) {
+      toast.error("Only owner can manage folders.");
+      return;
+    }
+    if (!canEditDocuments) {
+      toast.error("You do not have permission to edit documents.");
+      return;
+    }
     const newFolder = {
       id: `folder-${Date.now()}`,
       name,
@@ -110,6 +153,14 @@ export default function Documents() {
 
   const handleDeleteFolder = () => {
     if (!deleteFolderTarget?.id) return;
+    if (!isOwner) {
+      toast.error("Only owner can manage folders.");
+      return;
+    }
+    if (!canEditDocuments) {
+      toast.error("You do not have permission to edit documents.");
+      return;
+    }
 
     setFolders((prev) =>
       prev.filter((folder) => folder.id !== deleteFolderTarget.id),
@@ -134,6 +185,10 @@ export default function Documents() {
     sharedWith,
     owner,
   }) => {
+    if (!canEditDocuments) {
+      toast.error("You do not have permission to edit documents.");
+      return;
+    }
     const newDocument = {
       id: `doc-${Date.now()}`,
       name: name || "",
@@ -144,6 +199,7 @@ export default function Documents() {
       visibility: visibility || "family",
       sharedWith: Array.isArray(sharedWith) ? sharedWith : [],
       owner: owner || "alex",
+      created_by_user_id: currentUserId,
     };
 
     setFolders((prev) =>
@@ -159,7 +215,28 @@ export default function Documents() {
     toast.success("Document added to folder");
   };
 
+  const canManageFile = useCallback(
+    (file) => {
+      if (!canEditDocuments) return false;
+      if (isOwner) return true;
+      return Boolean(
+        currentUserId &&
+          file?.created_by_user_id &&
+          file.created_by_user_id === currentUserId,
+      );
+    },
+    [canEditDocuments, currentUserId, isOwner],
+  );
+
   const handleOpenEditDocument = (file, folderId) => {
+    if (!canEditDocuments) {
+      toast.error("You do not have permission to edit documents.");
+      return;
+    }
+    if (!canManageFile(file)) {
+      toast.error("You can edit only documents created by you.");
+      return;
+    }
     setEditDocumentTarget({
       folderId,
       documentId: file.id,
@@ -177,8 +254,16 @@ export default function Documents() {
     visibility,
     sharedWith,
   }) => {
+    if (!canEditDocuments) {
+      toast.error("You do not have permission to edit documents.");
+      return;
+    }
     if (!editDocumentTarget?.folderId || !editDocumentTarget?.documentId)
       return;
+    if (!canManageFile(editDocumentTarget.file)) {
+      toast.error("You can edit only documents created by you.");
+      return;
+    }
 
     const sourceFolderId = editDocumentTarget.folderId;
     const destinationFolderId = folderId || sourceFolderId;
@@ -237,6 +322,14 @@ export default function Documents() {
   const handleDeleteDocument = () => {
     if (!deleteDocumentTarget?.folderId || !deleteDocumentTarget?.documentId)
       return;
+    if (!canEditDocuments) {
+      toast.error("You do not have permission to edit documents.");
+      return;
+    }
+    if (deleteDocumentTarget?.file && !canManageFile(deleteDocumentTarget.file)) {
+      toast.error("You can delete only documents created by you.");
+      return;
+    }
 
     setFolders((prev) =>
       prev.map((folder) => {
@@ -256,10 +349,19 @@ export default function Documents() {
   };
 
   const openDeleteDocument = (file, folderId) => {
+    if (!canEditDocuments) {
+      toast.error("You do not have permission to edit documents.");
+      return;
+    }
+    if (!canManageFile(file)) {
+      toast.error("You can delete only documents created by you.");
+      return;
+    }
     setDeleteDocumentTarget({
       folderId,
       documentId: file.id,
       name: getDocumentLabel(file),
+      file,
     });
   };
 
@@ -275,18 +377,20 @@ export default function Documents() {
         onClick={() => setSelectedFolderId(folder.id)}
         className="group relative rounded-2xl border cursor-pointer border-slate-800/80 bg-dashboard-card p-4 text-left transition hover:border-slate-700 hover:bg-slate-900/70"
       >
-        <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
-          <button
-            onClick={(event) => {
-              event.stopPropagation();
-              setDeleteFolderTarget(folder);
-            }}
-            className="rounded p-1 text-rose-400 hover:bg-rose-500/15 hover:text-rose-300"
-            aria-label="Delete folder"
-          >
-            <IconTrash size={20} />
-          </button>
-        </div>
+        {isOwner ? (
+          <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                setDeleteFolderTarget(folder);
+              }}
+              className="rounded p-1 text-rose-400 hover:bg-rose-500/15 hover:text-rose-300"
+              aria-label="Delete folder"
+            >
+              <IconTrash size={20} />
+            </button>
+          </div>
+        ) : null}
 
         <span
           className={`mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg border ${styleClasses}`}
@@ -356,14 +460,16 @@ export default function Documents() {
                 </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setUploadSliderOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-primary-strong px-4 py-2.5 text-xs font-semibold text-white"
-              >
-                <IconUpload size={15} />
-                Upload to this Folder
-              </button>
+              {canEditDocuments ? (
+                <button
+                  type="button"
+                  onClick={() => setUploadSliderOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary-strong px-4 py-2.5 text-xs font-semibold text-white"
+                >
+                  <IconUpload size={15} />
+                  Upload to this Folder
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -373,37 +479,48 @@ export default function Documents() {
                 <DocumentGridCard
                   key={file.id}
                   file={file}
-                  onEditClick={() =>
-                    handleOpenEditDocument(file, selectedFolder.id)
+                  onEditClick={
+                    canEditDocuments && canManageFile(file)
+                      ? () => handleOpenEditDocument(file, selectedFolder.id)
+                      : null
                   }
-                  onDeleteClick={() =>
-                    openDeleteDocument(file, selectedFolder.id)
+                  onDeleteClick={
+                    canEditDocuments && canManageFile(file)
+                      ? () => openDeleteDocument(file, selectedFolder.id)
+                      : null
                   }
                 />
               ))}
 
-              <button
-                type="button"
-                onClick={() => setUploadSliderOpen(true)}
-                className="flex h-[230px] flex-col items-center justify-center rounded-2xl border border-dashed border-sky-500/40 bg-sky-500/5 text-sky-200 transition hover:bg-sky-500/10"
-              >
-                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-700 text-sky-200">
-                  <IconPlus size={16} />
-                </span>
-                <span className="mt-3 text-sm font-semibold">Add New File</span>
-              </button>
+              {canEditDocuments ? (
+                <button
+                  type="button"
+                  onClick={() => setUploadSliderOpen(true)}
+                  className="flex h-[230px] flex-col items-center justify-center rounded-2xl border border-dashed border-sky-500/40 bg-sky-500/5 text-sky-200 transition hover:bg-sky-500/10"
+                >
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-700 text-sky-200">
+                    <IconPlus size={16} />
+                  </span>
+                  <span className="mt-3 text-sm font-semibold">Add New File</span>
+                </button>
+              ) : null}
             </div>
           ) : (
             <div className="mt-5">
               <DocumentTable
                 files={selectedFolder.files}
                 variant="folder"
-                onEditClick={(file) =>
-                  handleOpenEditDocument(file, selectedFolder.id)
+                onEditClick={
+                  canEditDocuments
+                    ? (file) => handleOpenEditDocument(file, selectedFolder.id)
+                    : null
                 }
-                onDeleteClick={(file) =>
-                  openDeleteDocument(file, selectedFolder.id)
+                onDeleteClick={
+                  canEditDocuments
+                    ? (file) => openDeleteDocument(file, selectedFolder.id)
+                    : null
                 }
+                canManageFile={canManageFile}
               />
             </div>
           )}
@@ -446,24 +563,28 @@ export default function Documents() {
         title={pageTitle.title}
         subtitle={pageTitle.subtitle}
         right={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setCreateFolderOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-800"
-            >
-              <IconPlus size={15} />
-              New Folder
-            </button>
-            <button
-              type="button"
-              onClick={() => setUploadSliderOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-primary-strong px-4 py-2 text-xs font-semibold text-white"
-            >
-              <IconUpload size={15} />
-              Add New Document
-            </button>
-          </div>
+          canEditDocuments ? (
+            <div className="flex items-center gap-2">
+              {isOwner ? (
+                <button
+                  type="button"
+                  onClick={() => setCreateFolderOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-800"
+                >
+                  <IconPlus size={15} />
+                  New Folder
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setUploadSliderOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-primary-strong px-4 py-2 text-xs font-semibold text-white"
+              >
+                <IconUpload size={15} />
+                Add New Document
+              </button>
+            </div>
+          ) : null
         }
       />
 
@@ -522,10 +643,16 @@ export default function Documents() {
                 <DocumentGridCard
                   key={file.id}
                   file={file}
-                  onEditClick={() =>
-                    handleOpenEditDocument(file, file.folderId)
+                  onEditClick={
+                    canEditDocuments && canManageFile(file)
+                      ? () => handleOpenEditDocument(file, file.folderId)
+                      : null
                   }
-                  onDeleteClick={() => openDeleteDocument(file, file.folderId)}
+                  onDeleteClick={
+                    canEditDocuments && canManageFile(file)
+                      ? () => openDeleteDocument(file, file.folderId)
+                      : null
+                  }
                 />
               ))}
             </div>
@@ -533,10 +660,17 @@ export default function Documents() {
             <DocumentTable
               files={recentFiles}
               variant="recent"
-              onEditClick={(file) =>
-                handleOpenEditDocument(file, file.folderId)
+              onEditClick={
+                canEditDocuments
+                  ? (file) => handleOpenEditDocument(file, file.folderId)
+                  : null
               }
-              onDeleteClick={(file) => openDeleteDocument(file, file.folderId)}
+              onDeleteClick={
+                canEditDocuments
+                  ? (file) => openDeleteDocument(file, file.folderId)
+                  : null
+              }
+              canManageFile={canManageFile}
             />
           )}
         </div>

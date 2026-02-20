@@ -8,8 +8,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import ConfirmModal from "../components/common/ConfirmModal";
 import PageHeader from "../components/common/PageHeader";
-import InviteMemberModal from "../components/members/InviteMemberModal";
-import PermissionSlider from "../components/members/PermissionSlider";
+import MemberPermissionsFields from "../components/members/MemberPermissionsFields";
 import { useAuth } from "../context/AuthContext";
 import { auth } from "../services/firebase";
 import {
@@ -30,6 +29,14 @@ const ROLE_STYLES = {
   Member: "bg-slate-800/70 text-slate-300",
 };
 
+const normalizeAccessLevel = (value, fallback = "none") => {
+  if (value === "none" || value === "view" || value === "edit") {
+    return value;
+  }
+
+  return fallback;
+};
+
 const normalizeMember = (member) => {
   const roleLabel = member.role === "owner" ? "Owner" : "Member";
   const name = member.name || member.email?.split("@")[0] || "Unknown";
@@ -43,11 +50,25 @@ const normalizeMember = (member) => {
     created_at: member.created_at,
     permissions:
       roleLabel === "Owner"
-        ? { view: true, edit: true, delete: true }
+        ? {
+            passwordAccess: "edit",
+            contactsAccess: "edit",
+            documentsAccess: "edit",
+            inviteOthers: true,
+            exportData: true,
+          }
         : {
-            view: Boolean(member.permission_view),
-            edit: Boolean(member.permission_edit),
-            delete: Boolean(member.permission_delete),
+            passwordAccess: normalizeAccessLevel(
+              member.permission_password_access_level,
+            ),
+            contactsAccess: normalizeAccessLevel(
+              member.permission_contacts_access_level,
+            ),
+            documentsAccess: normalizeAccessLevel(
+              member.permission_documents_access_level,
+            ),
+            inviteOthers: Boolean(member.permission_invite_others),
+            exportData: Boolean(member.permission_export_data),
           },
   };
 };
@@ -55,9 +76,19 @@ const normalizeMember = (member) => {
 const getMemberKey = (member) => member.id || member.email;
 
 const getDefaultPermissions = (role) => ({
-  view: true,
-  edit: role === "Owner",
-  delete: role === "Owner",
+  passwordAccess: role === "Owner" ? "edit" : "view",
+  contactsAccess: role === "Owner" ? "edit" : "view",
+  documentsAccess: role === "Owner" ? "edit" : "view",
+  inviteOthers: role === "Owner",
+  exportData: true,
+});
+
+const getInviteDefaultPermissions = () => ({
+  passwordAccess: "view",
+  contactsAccess: "view",
+  documentsAccess: "view",
+  inviteOthers: false,
+  exportData: true,
 });
 
 const formatJoinedDate = (value) => {
@@ -103,22 +134,22 @@ export default function Members() {
   const [pendingInvites, setPendingInvites] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [activeSliderMode, setActiveSliderMode] = useState(null);
+  const [activeSliderMember, setActiveSliderMember] = useState(null);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [invitePermissions, setInvitePermissions] = useState({
-    view: true,
-    edit: false,
-    delete: false,
-  });
+  const [invitePermissions, setInvitePermissions] = useState(
+    getInviteDefaultPermissions(),
+  );
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteActionLoadingById, setInviteActionLoadingById] = useState({});
 
   const [permissions, setPermissions] = useState({});
-  const [permissionDrawerMember, setPermissionDrawerMember] = useState(null);
   const [permissionDraft, setPermissionDraft] = useState({
-    view: true,
-    edit: false,
-    delete: false,
+    passwordAccess: "view",
+    contactsAccess: "view",
+    documentsAccess: "view",
+    inviteOthers: false,
+    exportData: true,
   });
   const [permissionSaving, setPermissionSaving] = useState(false);
 
@@ -128,7 +159,7 @@ export default function Members() {
 
   const resetInviteForm = () => {
     setInviteEmail("");
-    setInvitePermissions({ view: true, edit: false, delete: false });
+    setInvitePermissions(getInviteDefaultPermissions());
   };
 
   const normalizedMembers = useMemo(
@@ -199,23 +230,25 @@ export default function Members() {
 
   const handleOpenPermissions = (member) => {
     const memberKey = getMemberKey(member);
-    setPermissionDrawerMember(member);
+    setActiveSliderMember(member);
+    setActiveSliderMode("permissions");
     setPermissionDraft(
       permissions[memberKey] || getDefaultPermissions(member.role),
     );
   };
 
-  const handleToggleDraftPermission = (key) => {
+  const handleChangeDraftPermission = (key, value) => {
     setPermissionDraft((prev) => ({
       ...prev,
-      [key]: !prev[key],
+      [key]: value,
     }));
   };
 
   const handleSavePermissionChanges = async () => {
-    if (!permissionDrawerMember) return;
-    if (permissionDrawerMember.role === "Owner") {
-      setPermissionDrawerMember(null);
+    if (!activeSliderMember) return;
+    if (activeSliderMember.role === "Owner") {
+      setActiveSliderMode(null);
+      setActiveSliderMember(null);
       return;
     }
 
@@ -224,18 +257,19 @@ export default function Members() {
       const token = await auth.currentUser.getIdToken();
       await updateMemberPermissions(
         token,
-        permissionDrawerMember.id,
+        activeSliderMember.id,
         permissionDraft,
       );
 
-      const memberKey = getMemberKey(permissionDrawerMember);
+      const memberKey = getMemberKey(activeSliderMember);
       setPermissions((prev) => ({
         ...prev,
         [memberKey]: permissionDraft,
       }));
 
       toast.success("Permissions updated.");
-      setPermissionDrawerMember(null);
+      setActiveSliderMode(null);
+      setActiveSliderMember(null);
       await loadData();
     } catch (error) {
       toast.error(error?.message || "Failed to update permissions.");
@@ -256,18 +290,26 @@ export default function Members() {
       await createInvitation(token, {
         email: inviteEmail.trim(),
         role: "member",
-        permissions: invitePermissions,
+        ...invitePermissions,
       });
 
       toast.success("Invitation sent.");
       resetInviteForm();
-      setInviteModalOpen(false);
+      setActiveSliderMode(null);
+      setActiveSliderMember(null);
       await loadData();
     } catch (error) {
       toast.error(error?.message || "Failed to send invitation.");
     } finally {
       setInviteLoading(false);
     }
+  };
+
+  const handleInvitePermissionChange = (key, value) => {
+    setInvitePermissions((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
   };
 
   const handleResend = async (invitationId) => {
@@ -313,7 +355,8 @@ export default function Members() {
       await deleteFamilyMember(token, memberToDelete.id);
       toast.success("Member deleted.");
       setMemberToDelete(null);
-      setPermissionDrawerMember(null);
+      setActiveSliderMode(null);
+      setActiveSliderMember(null);
       await loadData();
     } catch (error) {
       toast.error(error?.message || "Failed to delete member.");
@@ -332,7 +375,11 @@ export default function Members() {
             isOwner ? (
               <button
                 type="button"
-                onClick={() => setInviteModalOpen(true)}
+                onClick={() => {
+                  resetInviteForm();
+                  setActiveSliderMode("invite");
+                  setActiveSliderMember(null);
+                }}
                 className="inline-flex items-center gap-2 rounded-xl bg-primary-strong px-4 py-2 text-xs font-semibold text-white"
               >
                 <IconUserPlus size={16} />
@@ -568,39 +615,39 @@ export default function Members() {
         </div>
       ) : null}
 
-      <InviteMemberModal
-        open={inviteModalOpen}
+      <MemberPermissionsFields
+        open={Boolean(activeSliderMode)}
+        mode={activeSliderMode || "permissions"}
+        member={activeSliderMember}
         email={inviteEmail}
+        permissions={activeSliderMode === "invite" ? invitePermissions : permissionDraft}
         onEmailChange={setInviteEmail}
-        initialPermissions={invitePermissions}
-        onTogglePermission={(key) =>
-          setInvitePermissions((prev) => ({
-            ...prev,
-            [key]: !prev[key],
-          }))
-        }
-        onClose={() => {
-          if (inviteLoading) return;
-          resetInviteForm();
-          setInviteModalOpen(false);
+        onChangePermission={(key, value) => {
+          if (activeSliderMode === "invite") {
+            handleInvitePermissionChange(key, value);
+            return;
+          }
+          handleChangeDraftPermission(key, value);
         }}
-        onSubmit={handleSendInvite}
-        loading={inviteLoading}
-      />
-
-      <PermissionSlider
-        open={Boolean(permissionDrawerMember)}
-        member={permissionDrawerMember}
-        permissions={permissionDraft}
-        saving={permissionSaving}
-        isOwnerRow={permissionDrawerMember?.role === "Owner"}
         disableAllPermissions={!isOwner}
-        onToggle={handleToggleDraftPermission}
+        isOwnerRow={activeSliderMember?.role === "Owner"}
         onClose={() => {
-          if (permissionSaving) return;
-          setPermissionDrawerMember(null);
+          if (activeSliderMode === "invite" && inviteLoading) return;
+          if (activeSliderMode === "permissions" && permissionSaving) return;
+          if (activeSliderMode === "invite") {
+            resetInviteForm();
+          }
+          setActiveSliderMode(null);
+          setActiveSliderMember(null);
         }}
-        onSave={handleSavePermissionChanges}
+        onSubmit={() => {
+          if (activeSliderMode === "invite") {
+            handleSendInvite();
+            return;
+          }
+          handleSavePermissionChanges();
+        }}
+        loading={activeSliderMode === "invite" ? inviteLoading : permissionSaving}
       />
 
       <ConfirmModal

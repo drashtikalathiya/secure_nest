@@ -22,7 +22,10 @@ export default function DocumentTable({
   variant = "recent",
   onEditClick,
   onDeleteClick,
+  canManageFile,
 }) {
+  const showActions = Boolean(onEditClick || onDeleteClick);
+
   if (variant === "folder") {
     return (
       <div className="overflow-hidden rounded-xl border border-slate-800/80">
@@ -48,22 +51,34 @@ export default function DocumentTable({
               </div>
               <p className="text-xs text-slate-400">{file.uploadedAt || "-"}</p>
               <p className="text-xs text-slate-400">{formatSize(file.sizeMb)}</p>
-              <button
-                type="button"
-                onClick={() => onEditClick?.(file)}
-                className="justify-self-start rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
-                aria-label="Edit file"
-              >
-                <IconPencil size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => onDeleteClick?.(file)}
-                className="justify-self-start rounded p-1 text-rose-400 hover:bg-rose-500/15 hover:text-rose-300"
-                aria-label="Delete file"
-              >
-                <IconTrash size={14} />
-              </button>
+              <div className="flex items-center gap-1">
+                {showActions && (canManageFile ? canManageFile(file) : true) ? (
+                  <>
+                    {onEditClick ? (
+                      <button
+                        type="button"
+                        onClick={() => onEditClick(file)}
+                        className="justify-self-start rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
+                        aria-label="Edit file"
+                      >
+                        <IconPencil size={14} />
+                      </button>
+                    ) : null}
+                    {onDeleteClick ? (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteClick(file)}
+                        className="justify-self-start rounded p-1 text-rose-400 hover:bg-rose-500/15 hover:text-rose-300"
+                        aria-label="Delete file"
+                      >
+                        <IconTrash size={14} />
+                      </button>
+                    ) : null}
+                  </>
+                ) : (
+                  <span className="text-xs text-slate-500">View only</span>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -88,24 +103,32 @@ export default function DocumentTable({
             <p className="truncate text-sm text-slate-100">{getDocumentLabel(file)}</p>
             <p className="text-xs text-slate-400">{file.folderName || "-"}</p>
             <p className="text-xs text-slate-400">{formatSize(file.sizeMb)}</p>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => onEditClick?.(file)}
-                className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
-                aria-label="Edit file"
-              >
-                <IconPencil size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => onDeleteClick?.(file)}
-                className="rounded p-1 text-rose-400 hover:bg-rose-500/15 hover:text-rose-300"
-                aria-label="Delete file"
-              >
-                <IconTrash size={14} />
-              </button>
-            </div>
+            {showActions && (canManageFile ? canManageFile(file) : true) ? (
+              <div className="flex items-center gap-1">
+                {onEditClick ? (
+                  <button
+                    type="button"
+                    onClick={() => onEditClick(file)}
+                    className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
+                    aria-label="Edit file"
+                  >
+                    <IconPencil size={14} />
+                  </button>
+                ) : null}
+                {onDeleteClick ? (
+                  <button
+                    type="button"
+                    onClick={() => onDeleteClick(file)}
+                    className="rounded p-1 text-rose-400 hover:bg-rose-500/15 hover:text-rose-300"
+                    aria-label="Delete file"
+                  >
+                    <IconTrash size={14} />
+                  </button>
+                ) : null}
+              </div>
+            ) : (
+              <span className="text-xs text-slate-500">View only</span>
+            )}
           </div>
         ))}
       </div>

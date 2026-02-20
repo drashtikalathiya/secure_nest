@@ -106,24 +106,26 @@ export default function PasswordItem({
           >
             <IconStar size={16} fill={isFavorite ? "currentColor" : "none"} />
           </button>
-          <button
-            type="button"
-            onClick={onEdit}
-            disabled={!canEdit}
-            className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-800/80 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Edit"
-          >
-            <IconPencil size={16} />
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={!canDelete}
-            className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-rose-500/10 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
-            aria-label="Delete"
-          >
-            <IconTrash size={16} />
-          </button>
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-800/80 hover:text-white"
+              aria-label="Edit"
+            >
+              <IconPencil size={16} />
+            </button>
+          ) : null}
+          {canDelete ? (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-rose-500/10 hover:text-rose-300"
+              aria-label="Delete"
+            >
+              <IconTrash size={16} />
+            </button>
+          ) : null}
         </div>
       </div>
     );
@@ -197,24 +199,26 @@ export default function PasswordItem({
         >
           <IconUser size={14} />
         </button>
-        <button
-          type="button"
-          onClick={onEdit}
-          disabled={!canEdit}
-          className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-800/80 hover:text-white"
-          aria-label="Edit"
-        >
-          <IconPencil size={14} />
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={!canDelete}
-          className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-rose-500/10 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
-          aria-label="Delete"
-        >
-          <IconTrash size={14} />
-        </button>
+        {canEdit ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-800/80 hover:text-white"
+            aria-label="Edit"
+          >
+            <IconPencil size={14} />
+          </button>
+        ) : null}
+        {canDelete ? (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-rose-500/10 hover:text-rose-300"
+            aria-label="Delete"
+          >
+            <IconTrash size={14} />
+          </button>
+        ) : null}
       </div>
     </div>
   );

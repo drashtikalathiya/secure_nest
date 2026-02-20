@@ -68,6 +68,34 @@ export const AuthProvider = ({ children }) => {
           subscription_plan:
             backendUser.subscription_plan || claims.subscription_plan || "small",
           family_owner_id: backendUser.family_owner_id || null,
+          permission_password_access_level:
+            backendUser.permission_password_access_level ||
+            claims.permission_password_access_level ||
+            (backendUser.role === "owner" || claims.role === "owner"
+              ? "edit"
+              : "none"),
+          permission_contacts_access_level:
+            backendUser.permission_contacts_access_level ||
+            claims.permission_contacts_access_level ||
+            (backendUser.role === "owner" || claims.role === "owner"
+              ? "edit"
+              : "none"),
+          permission_documents_access_level:
+            backendUser.permission_documents_access_level ||
+            claims.permission_documents_access_level ||
+            (backendUser.role === "owner" || claims.role === "owner"
+              ? "edit"
+              : "none"),
+          permission_invite_others: Boolean(
+            backendUser.permission_invite_others ??
+              claims.permission_invite_others ??
+              false,
+          ),
+          permission_export_data: Boolean(
+            backendUser.permission_export_data ??
+              claims.permission_export_data ??
+              true,
+          ),
         };
 
         if (version !== authVersionRef.current) return;

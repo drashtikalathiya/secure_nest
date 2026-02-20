@@ -37,14 +37,8 @@ export class User {
   @Column({ nullable: true })
   family_owner_id: string;
 
-  @Column({ default: true })
-  permission_view: boolean;
-
-  @Column({ default: false })
-  permission_edit: boolean;
-
-  @Column({ default: false })
-  permission_delete: boolean;
+  @Column({ nullable: true })
+  permission_profile_id: string;
 
   @CreateDateColumn()
   created_at: Date;

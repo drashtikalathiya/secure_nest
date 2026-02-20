@@ -11,6 +11,7 @@ import admin from '../../config/firebase-admin';
 import { Invitation } from '../invitations/invitation.entity';
 import { User } from './user.entity';
 import { CloudinaryService } from './cloudinary.service';
+import { PermissionsService } from '../permissions/permissions.service';
 
 @Injectable()
 export class UsersService {
@@ -19,6 +20,7 @@ export class UsersService {
     private userRepo: Repository<User>,
     @InjectRepository(Invitation)
     private inviteRepo: Repository<Invitation>,
+    private permissionsService: PermissionsService,
     private readonly cloudinaryService: CloudinaryService,
   ) {}
 
@@ -28,7 +30,7 @@ export class UsersService {
     });
   }
 
-  async findFamilyMembers(firebaseUid: string): Promise<User[]> {
+  async findFamilyMembers(firebaseUid: string): Promise<any[]> {
     const requester = await this.userRepo.findOne({
       where: { firebase_uid: firebaseUid },
     });
@@ -41,7 +43,7 @@ export class UsersService {
       requester.role === 'owner' ? requester.id : requester.family_owner_id;
 
     if (!familyOwnerId) {
-      return [requester];
+      return [await this.toMemberResponse(requester)];
     }
 
     const users = await this.userRepo.find({
@@ -52,10 +54,12 @@ export class UsersService {
       order: { created_at: 'ASC' },
     });
 
-    return users.sort((a, b) => {
+    const sorted = users.sort((a, b) => {
       if (a.role === b.role) return 0;
       return a.role === 'owner' ? -1 : 1;
     });
+
+    return Promise.all(sorted.map((user) => this.toMemberResponse(user)));
   }
 
   async uploadMyProfilePhoto(
@@ -140,7 +144,7 @@ export class UsersService {
     firebaseUid: string,
     memberId: string,
     body: any,
-  ): Promise<User> {
+  ): Promise<any> {
     const requester = await this.userRepo.findOne({
       where: { firebase_uid: firebaseUid },
     });
@@ -167,18 +171,21 @@ export class UsersService {
       );
     }
 
-    const nextPermissions = {
-      permission_view:
-        typeof body?.view === 'boolean' ? body.view : member.permission_view,
-      permission_edit:
-        typeof body?.edit === 'boolean' ? body.edit : member.permission_edit,
-      permission_delete:
-        typeof body?.delete === 'boolean'
-          ? body.delete
-          : member.permission_delete,
-    };
+    if (member.role !== 'member') {
+      throw new BadRequestException('Permissions can be updated only for members.');
+    }
 
-    await this.userRepo.update({ id: member.id }, nextPermissions);
+    const profileId = await this.permissionsService.upsertProfile(
+      requester.id,
+      member.permission_profile_id,
+      body,
+    );
+    if (member.permission_profile_id !== profileId) {
+      await this.userRepo.update(
+        { id: member.id },
+        { permission_profile_id: profileId },
+      );
+    }
 
     const updatedMember = await this.userRepo.findOne({
       where: { id: member.id },
@@ -187,7 +194,7 @@ export class UsersService {
       throw new NotFoundException('Member account was not found.');
     }
 
-    return updatedMember;
+    return this.toMemberResponse(updatedMember);
   }
 
   async deleteFamilyMember(
@@ -330,5 +337,14 @@ export class UsersService {
     }
 
     return cleaned;
+  }
+
+  private async toMemberResponse(user: User): Promise<any> {
+    const permissions = await this.permissionsService.resolveUserPayload(user);
+
+    return {
+      ...user,
+      ...this.permissionsService.toApiPermissionFields(permissions),
+    };
   }
 }

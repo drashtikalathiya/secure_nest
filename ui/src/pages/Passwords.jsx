@@ -60,7 +60,13 @@ export default function Passwords() {
   const [favoriteKeys, setFavoriteKeys] = useState({});
   const [currentUserId, setCurrentUserId] = useState(null);
   const [familyOptions, setFamilyOptions] = useState([]);
+  const [modulePermissions, setModulePermissions] = useState({
+    view: true,
+    edit: false,
+    delete: false,
+  });
   const pageTitle = PAGE_META["/passwords"];
+  const canEditPasswords = Boolean(modulePermissions.edit);
 
   const [form, setForm] = useState({
     name: "",
@@ -118,6 +124,9 @@ export default function Passwords() {
       const items = Array.isArray(passwordData.items) ? passwordData.items : [];
       const mappedCards = items.map(toPasswordItem);
       setCards(mappedCards);
+      setModulePermissions(
+        passwordData.permissions || { view: true, edit: false, delete: false },
+      );
 
       const members = Array.isArray(membersRes?.data) ? membersRes.data : [];
       const me = members.find((member) => member.email === user?.email);
@@ -132,6 +141,7 @@ export default function Passwords() {
       setFamilyOptions(options);
     } catch (error) {
       setCards([]);
+      setModulePermissions({ view: true, edit: false, delete: false });
       toast.error(error?.message || "Failed to load passwords.");
     } finally {
       setLoading(false);
@@ -144,6 +154,10 @@ export default function Passwords() {
 
   const handleSave = async (event) => {
     event.preventDefault();
+    if (!canEditPasswords || !modulePermissions.edit) {
+      toast.error("You do not have permission to edit passwords.");
+      return;
+    }
 
     try {
       setSaveLoading(true);
@@ -178,6 +192,10 @@ export default function Passwords() {
 
   const handleDeletePassword = async () => {
     if (!deleteTarget?.id) return;
+    if (!canEditPasswords || !modulePermissions.delete) {
+      toast.error("You do not have permission to delete passwords.");
+      return;
+    }
 
     try {
       setDeleteLoading(true);
@@ -259,14 +277,16 @@ export default function Passwords() {
         title={pageTitle.title}
         subtitle={pageTitle.subtitle}
         right={
-          <button
-            type="button"
-            onClick={() => setIsAddOpen(true)}
-            className="flex items-center gap-2 rounded-xl bg-primary-strong px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_24px_-18px_rgba(59,130,246,0.7)]"
-          >
-            <IconPlus size={16} />
-            Add Password
-          </button>
+          canEditPasswords ? (
+            <button
+              type="button"
+              onClick={() => setIsAddOpen(true)}
+              className="flex items-center gap-2 rounded-xl bg-primary-strong px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_24px_-18px_rgba(59,130,246,0.7)]"
+            >
+              <IconPlus size={16} />
+              Add Password
+            </button>
+          ) : null
         }
       />
 
@@ -358,8 +378,16 @@ export default function Passwords() {
                         handleCopy={handleCopy}
                         isFavorite={Boolean(favoriteKeys[rowKey])}
                         onToggleFavorite={() => toggleFavorite(rowKey)}
-                        canEdit={item.createdByUserId === currentUserId}
-                        canDelete={item.createdByUserId === currentUserId}
+                        canEdit={
+                          canEditPasswords &&
+                          modulePermissions.edit &&
+                          item.createdByUserId === currentUserId
+                        }
+                        canDelete={
+                          canEditPasswords &&
+                          modulePermissions.delete &&
+                          item.createdByUserId === currentUserId
+                        }
                         onEdit={() => handleEditPassword(item)}
                         onDelete={() =>
                           setDeleteTarget({
@@ -390,8 +418,16 @@ export default function Passwords() {
                       handleCopy={handleCopy}
                       isFavorite={Boolean(favoriteKeys[rowKey])}
                       onToggleFavorite={() => toggleFavorite(rowKey)}
-                      canEdit={item.createdByUserId === currentUserId}
-                      canDelete={item.createdByUserId === currentUserId}
+                      canEdit={
+                        canEditPasswords &&
+                        modulePermissions.edit &&
+                        item.createdByUserId === currentUserId
+                      }
+                      canDelete={
+                        canEditPasswords &&
+                        modulePermissions.delete &&
+                        item.createdByUserId === currentUserId
+                      }
                       onEdit={() => handleEditPassword(item)}
                       onDelete={() =>
                         setDeleteTarget({

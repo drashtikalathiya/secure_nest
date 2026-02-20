@@ -40,7 +40,13 @@ export default function Contacts() {
   const [newContactForm, setNewContactForm] = useState(emptyNewContactForm);
   const [editingId, setEditingId] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [modulePermissions, setModulePermissions] = useState({
+    view: true,
+    edit: false,
+    delete: false,
+  });
   const pageTitle = PAGE_META["/contacts"];
+  const canEditContacts = Boolean(modulePermissions.edit);
 
   const filteredContacts = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -68,11 +74,19 @@ export default function Contacts() {
       ]);
 
       setAllContacts(contactsRes?.data?.items || []);
+      setModulePermissions(
+        contactsRes?.data?.permissions || {
+          view: true,
+          edit: false,
+          delete: false,
+        },
+      );
 
       const members = Array.isArray(membersRes?.data) ? membersRes.data : [];
       const me = members.find((member) => member.email === user?.email);
       setCurrentUserId(me?.id || null);
     } catch (error) {
+      setModulePermissions({ view: true, edit: false, delete: false });
       toast.error(error?.message || "Failed to load contacts.");
     } finally {
       setIsLoading(false);
@@ -89,11 +103,19 @@ export default function Contacts() {
   };
 
   const openCreateModal = () => {
+    if (!canEditContacts || !modulePermissions.edit) {
+      toast.error("You do not have permission to add contacts.");
+      return;
+    }
     resetFormState();
     setIsFormOpen(true);
   };
 
   const handleEdit = (item) => {
+    if (!canEditContacts || !modulePermissions.edit) {
+      toast.error("You do not have permission to edit contacts.");
+      return;
+    }
     setEditingId(item.id);
     setNewContactForm({
       name: item.name || "",
@@ -109,6 +131,10 @@ export default function Contacts() {
 
   const handleSave = async (event) => {
     event.preventDefault();
+    if (!canEditContacts || !modulePermissions.edit) {
+      toast.error("You do not have permission to edit contacts.");
+      return;
+    }
 
     setSubmitLoading(true);
     try {
@@ -154,6 +180,10 @@ export default function Contacts() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    if (!canEditContacts || !modulePermissions.delete) {
+      toast.error("You do not have permission to delete contacts.");
+      return;
+    }
 
     try {
       setDeleteLoading(true);
@@ -177,14 +207,16 @@ export default function Contacts() {
         title={pageTitle.title}
         subtitle={pageTitle.subtitle}
         right={
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="inline-flex items-center gap-2 rounded-xl bg-primary-strong px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_24px_-18px_rgba(59,130,246,0.7)]"
-          >
-            <IconPlus size={16} />
-            Add New Contact
-          </button>
+          canEditContacts ? (
+            <button
+              type="button"
+              onClick={openCreateModal}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary-strong px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_24px_-18px_rgba(59,130,246,0.7)]"
+            >
+              <IconPlus size={16} />
+              Add New Contact
+            </button>
+          ) : null
         }
       />
 
@@ -214,8 +246,16 @@ export default function Contacts() {
             <ContactCard
               key={contact.id}
               contact={contact}
-              canEdit={contact.created_by_user_id === currentUserId}
-              canDelete={contact.created_by_user_id === currentUserId}
+              canDelete={
+                canEditContacts &&
+                modulePermissions.delete &&
+                contact.created_by_user_id === currentUserId
+              }
+              canEdit={
+                canEditContacts &&
+                modulePermissions.edit &&
+                contact.created_by_user_id === currentUserId
+              }
               onEdit={handleEdit}
               onDelete={(item) =>
                 setDeleteTarget({

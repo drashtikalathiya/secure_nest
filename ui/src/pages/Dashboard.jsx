@@ -7,6 +7,7 @@ import { VAULT_SECTIONS } from "../const/dashboardData";
 import { PAGE_META } from "../const/pageMeta";
 import { getFamilyMembers } from "../services/usersApi";
 import { auth } from "../services/firebase";
+import { canViewModule } from "../utils/permissions";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -16,6 +17,12 @@ export default function Dashboard() {
   const activeMembers = members.length;
   const visibleMembers = members.slice(0, 4);
   const overflowMembersCount = Math.max(activeMembers - 4, 0);
+  const visibleVaultSections = VAULT_SECTIONS.filter((section) => {
+    if (section.to === "/passwords") return canViewModule(user, "passwords");
+    if (section.to === "/contacts") return canViewModule(user, "contacts");
+    if (section.to === "/documents") return canViewModule(user, "documents");
+    return true;
+  });
 
   useEffect(() => {
     const loadActiveMembers = async () => {
@@ -90,7 +97,7 @@ export default function Dashboard() {
         </div>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 lg:grid-cols-4">
-          {VAULT_SECTIONS.map((section) => {
+          {visibleVaultSections.map((section) => {
             const Icon = section.icon;
             return (
               <div

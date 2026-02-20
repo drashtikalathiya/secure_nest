@@ -12,6 +12,7 @@ import admin from '../../config/firebase-admin';
 import { InvitationsService } from '../invitations/invitations.service';
 import { getErrorMessage } from '../utils/errorMessage';
 import { CloudinaryService } from '../users/cloudinary.service';
+import { PermissionsService } from '../permissions/permissions.service';
 
 @Injectable()
 export class AuthService {
@@ -20,6 +21,7 @@ export class AuthService {
     private readonly userRepo: Repository<User>,
     private readonly invitationsService: InvitationsService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly permissionsService: PermissionsService,
   ) {}
 
   async uploadSignupProfilePhoto(
@@ -103,9 +105,7 @@ export class AuthService {
       profile_photo_url: profilePhotoUrl || null,
       role: 'owner',
       subscription_plan: 'small',
-      permission_view: true,
-      permission_edit: true,
-      permission_delete: true,
+      permission_profile_id: null,
     });
 
     user = await this.userRepo.save(user);
@@ -134,48 +134,50 @@ export class AuthService {
       name: name || null,
       profile_photo_url: profilePhotoUrl || null,
       role: 'member',
-      permission_view: true,
-      permission_edit: false,
-      permission_delete: false,
+      permission_profile_id: null,
     });
 
     member = await this.userRepo.save(member);
 
-    const inviteResult =
-      await this.invitationsService.completeInviteForRegisteredUser(
-        invite,
-        member,
-      );
-    member.role = inviteResult.role as 'owner' | 'member';
-    member.family_owner_id = inviteResult.family_owner_id;
+    await this.invitationsService.completeInviteForRegisteredUser(invite, member);
 
-    await this.userRepo.save(member);
+    const syncedMember = await this.userRepo.findOne({
+      where: { id: member.id },
+    });
 
-    return this.buildAuthResponse(member);
+    if (!syncedMember) {
+      throw new NotFoundException('User is not registered.');
+    }
+
+    return this.buildAuthResponse(syncedMember);
   }
 
   private async buildAuthResponse(user: User) {
     const payload = await this.authPayload(user);
-    await this.syncFirebaseClaims(user, payload.is_subscribed, payload.subscription_plan);
+    await this.syncFirebaseClaims(
+      user,
+      payload.is_subscribed,
+      payload.subscription_plan,
+    );
     return payload;
   }
 
   private async authPayload(user: User) {
     const owner = await this.getOwnerForUser(user);
-    const isSubscribed = user.role === 'owner'
-      ? Boolean(user.is_subscribed)
-      : Boolean(owner?.is_subscribed);
+    const isSubscribed =
+      user.role === 'owner'
+        ? Boolean(user.is_subscribed)
+        : Boolean(owner?.is_subscribed);
     const subscriptionPlan = owner?.subscription_plan || user.subscription_plan || 'small';
 
-    if (
-      user.role === 'member' &&
-      user.subscription_plan !== subscriptionPlan
-    ) {
+    if (user.role === 'member' && user.subscription_plan !== subscriptionPlan) {
       await this.userRepo.update(user.id, {
         subscription_plan: subscriptionPlan,
       });
       user.subscription_plan = subscriptionPlan;
     }
+
+    const permissions = await this.permissionsService.resolveUserPayload(user);
 
     return {
       id: user.id,
@@ -186,6 +188,11 @@ export class AuthService {
       family_owner_id: user.family_owner_id,
       is_subscribed: isSubscribed,
       subscription_plan: subscriptionPlan,
+      permission_password_access_level: permissions.passwordAccess,
+      permission_contacts_access_level: permissions.contactsAccess,
+      permission_documents_access_level: permissions.documentsAccess,
+      permission_invite_others: permissions.inviteOthers,
+      permission_export_data: permissions.exportData,
     };
   }
 
@@ -269,4 +276,5 @@ export class AuthService {
 
     return fallback;
   }
+
 }
