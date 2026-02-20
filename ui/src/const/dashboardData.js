@@ -2,11 +2,20 @@ import {
   IconKey,
   IconFileText,
   IconCreditCard,
-  IconHeartbeat,
+  IconUsersGroup,
   IconAddressBook,
 } from "@tabler/icons-react";
 
 export const VAULT_SECTIONS = [
+  {
+    label: "Family Members",
+    meta: "Updated yesterday",
+    count: "15",
+    icon: IconUsersGroup,
+    accent: "text-emerald-400",
+    badge: "bg-emerald-500/20 text-emerald-300",
+    to: "/members",
+  },
   {
     label: "Passwords",
     meta: "Last added 3h ago",
@@ -17,33 +26,6 @@ export const VAULT_SECTIONS = [
     to: "/passwords",
   },
   {
-    label: "Documents",
-    meta: "2 files expiring soon",
-    count: "42",
-    icon: IconFileText,
-    accent: "text-blue-400",
-    badge: "bg-blue-500/20 text-blue-300",
-    to: "/documents",
-  },
-  {
-    label: "Finance",
-    meta: "Updated yesterday",
-    count: "15",
-    icon: IconCreditCard,
-    accent: "text-emerald-400",
-    badge: "bg-emerald-500/20 text-emerald-300",
-    to: "/finance",
-  },
-  {
-    label: "Medical",
-    meta: "Vaccination records added",
-    count: "24",
-    icon: IconHeartbeat,
-    accent: "text-rose-400",
-    badge: "bg-rose-500/20 text-rose-300",
-    to: "/medical",
-  },
-  {
     label: "Contacts",
     meta: "Emergency list synced",
     count: "36",
@@ -51,5 +33,14 @@ export const VAULT_SECTIONS = [
     accent: "text-violet-400",
     badge: "bg-violet-500/20 text-violet-300",
     to: "/contacts",
+  },
+  {
+    label: "Documents",
+    meta: "2 files expiring soon",
+    count: "42",
+    icon: IconFileText,
+    accent: "text-blue-400",
+    badge: "bg-blue-500/20 text-blue-300",
+    to: "/documents",
   },
 ];

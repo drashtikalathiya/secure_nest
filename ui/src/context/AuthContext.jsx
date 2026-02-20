@@ -11,6 +11,8 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const authVersionRef = useRef(0);
+  const SIGNUP_IN_PROGRESS_KEY = "sn_signup_in_progress";
+  const refreshSessionRef = useRef(async () => {});
 
   useEffect(() => {
     let retryTimer = null;
@@ -37,6 +39,10 @@ export const AuthProvider = ({ children }) => {
 
       try {
         setLoading(true);
+        if (sessionStorage.getItem(SIGNUP_IN_PROGRESS_KEY) === "1") {
+          setLoading(false);
+          return;
+        }
 
         const token = await currentUser.getIdToken();
         const { data } = await backendLogin(token);
@@ -63,11 +69,11 @@ export const AuthProvider = ({ children }) => {
             claims.profile_photo_url ||
             currentUser.photoURL ||
             "",
-          role: backendUser.role || claims.role || null,
+          role: backendUser.role || claims.role || "",
           is_subscribed: resolvedSubscription,
           subscription_plan:
             backendUser.subscription_plan || claims.subscription_plan || "small",
-          family_owner_id: backendUser.family_owner_id || null,
+          family_owner_id: backendUser.family_owner_id || "",
           permission_password_access_level:
             backendUser.permission_password_access_level ||
             claims.permission_password_access_level ||
@@ -125,6 +131,12 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
+    refreshSessionRef.current = async () => {
+      authVersionRef.current += 1;
+      const version = authVersionRef.current;
+      await syncUserSession(auth.currentUser, version);
+    };
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (retryTimer) {
         clearTimeout(retryTimer);
@@ -147,7 +159,16 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isSubscribed, loading, setUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isSubscribed,
+        loading,
+        setUser,
+        setIsSubscribed,
+        refreshSession: () => refreshSessionRef.current(),
+      }}
+    >
       {!loading && children}
     </AuthContext.Provider>
   );

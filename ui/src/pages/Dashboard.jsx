@@ -96,7 +96,7 @@ export default function Dashboard() {
           </button>
         </div>
 
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 lg:grid-cols-4">
+        <div className="mt-5 grid gap-4 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 lg:grid-cols-3">
           {visibleVaultSections.map((section) => {
             const Icon = section.icon;
             return (

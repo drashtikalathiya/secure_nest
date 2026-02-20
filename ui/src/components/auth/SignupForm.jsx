@@ -20,6 +20,9 @@ import {
 } from "../../services/authApi";
 import { validateSignup } from "../../utils/validators";
 import toast from "react-hot-toast";
+import { useAuth } from "../../context/AuthContext";
+
+const SIGNUP_IN_PROGRESS_KEY = "sn_signup_in_progress";
 
 export default function SignupForm() {
   const [searchParams] = useSearchParams();
@@ -39,6 +42,7 @@ export default function SignupForm() {
   const fileInputRef = useRef(null);
 
   const navigate = useNavigate();
+  const { refreshSession } = useAuth();
 
   useEffect(() => {
     return () => {
@@ -86,14 +90,15 @@ export default function SignupForm() {
     try {
       setLoading(true);
       setError({});
-      let uploadedPhotoUrl = null;
+      sessionStorage.setItem(SIGNUP_IN_PROGRESS_KEY, "1");
+      let uploadedPhotoUrl = "";
 
       const firebaseUser = await firebaseSignup(email, password);
       const idToken = await firebaseUser.getIdToken();
 
       if (profileImage) {
         const uploadRes = await uploadSignupProfilePhoto(idToken, profileImage);
-        uploadedPhotoUrl = uploadRes?.data?.profile_photo_url || null;
+        uploadedPhotoUrl = uploadRes?.data?.profile_photo_url || "";
       }
 
       const profilePayload = {
@@ -104,11 +109,17 @@ export default function SignupForm() {
       }
       await updateFirebaseUserProfile(firebaseUser, profilePayload);
 
-      const { data } = await backendSignup(idToken, {
+      const payload = {
         name: fullName,
-        photo_url: uploadedPhotoUrl,
         inviteToken,
-      });
+      };
+      if (uploadedPhotoUrl) {
+        payload.photo_url = uploadedPhotoUrl;
+      }
+
+      const { data } = await backendSignup(idToken, payload);
+      sessionStorage.removeItem(SIGNUP_IN_PROGRESS_KEY);
+      await refreshSession();
 
       toast.success("User registered successfully!");
 
@@ -117,6 +128,7 @@ export default function SignupForm() {
       });
     } catch (err) {
       console.error("Signup error:", err);
+      sessionStorage.removeItem(SIGNUP_IN_PROGRESS_KEY);
 
       if (err?.code === "auth/email-already-in-use") {
         toast.error("Email already exists. Please try another email.");
