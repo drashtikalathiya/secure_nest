@@ -13,10 +13,12 @@ import admin from '../../config/firebase-admin';
 import { Invitation } from './invitation.entity';
 import { User } from '../users/user.entity';
 import { getErrorMessage } from '../utils/errorMessage';
-import { getPlanMemberLimit, SubscriptionPlan } from '../billing/subscription-plan';
+import { renderInvitationEmailHtml } from '../utils/emailTemplates';
 import {
-  DEFAULT_MEMBER_PERMISSIONS,
-} from '../permissions/permissions.utils';
+  getPlanMemberLimit,
+  SubscriptionPlan,
+} from '../billing/subscription-plan';
+import { DEFAULT_MEMBER_PERMISSIONS } from '../permissions/permissions.utils';
 import { PermissionsService } from '../permissions/permissions.service';
 
 const INVITE_EXPIRY_DAYS = 7;
@@ -125,7 +127,11 @@ export class InvitationsService {
     });
 
     return {
-      ...(await this.mapInviteResponse({ ...invite, token, expires_at: expiresAt })),
+      ...(await this.mapInviteResponse({
+        ...invite,
+        token,
+        expires_at: expiresAt,
+      })),
       invite_link: inviteLink,
     };
   }
@@ -489,6 +495,14 @@ export class InvitationsService {
     try {
       const secure =
         String(process.env.MAIL_SECURE || 'false').toLowerCase() === 'true';
+      const appName = process.env.MAIL_FROM_NAME || 'SecureNest';
+      const supportEmail =
+        process.env.SUPPORT_EMAIL || process.env.MAIL_FROM || user;
+      const ownerName = this.escapeHtml(params.ownerName);
+      const inviteLink = this.escapeHtml(params.inviteLink);
+      const expiresAtUtc = params.expiresAt.toUTCString();
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendDomain = new URL(frontendUrl).host;
 
       const transporter = nodemailer.createTransport({
         host,
@@ -498,17 +512,17 @@ export class InvitationsService {
       });
 
       await transporter.sendMail({
-        from: `${process.env.MAIL_FROM_NAME || 'SecureNest'} <${
-          process.env.MAIL_FROM || user
-        }>` ,
+        from: `${appName} <${process.env.MAIL_FROM || user}>`,
         to: params.inviteeEmail,
-        subject: `${params.ownerName} invited you to SecureNest`,
-        text: `Accept invitation: ${params.inviteLink}`,
-        html: `
-          <p><strong>${params.ownerName}</strong> invited you to SecureNest.</p>
-          <a href="${params.inviteLink}">Accept invitation</a>
-          <p>Expires on ${params.expiresAt.toUTCString()}</p>
-        `,
+        subject: `${params.ownerName} invited you to ${appName}`,
+        html: renderInvitationEmailHtml({
+          appName,
+          ownerName,
+          inviteLink,
+          expiresAtUtc,
+          supportEmail: this.escapeHtml(supportEmail),
+          frontendDomain: this.escapeHtml(frontendDomain),
+        }),
       });
     } catch (error) {
       console.error('Invitation email send failed:', {
@@ -518,5 +532,14 @@ export class InvitationsService {
         'Failed to send invitation email.',
       );
     }
+  }
+
+  private escapeHtml(value: string): string {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 }
