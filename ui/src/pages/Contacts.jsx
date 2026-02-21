@@ -27,6 +27,11 @@ const emptyNewContactForm = {
   notes: "",
 };
 
+const toPhoneDigits = (value) =>
+  String(value || "")
+    .replace(/\D/g, "")
+    .slice(0, 10);
+
 export default function Contacts() {
   const { user } = useAuth();
 
@@ -145,11 +150,17 @@ export default function Contacts() {
         return;
       }
 
+      const phoneDigits = toPhoneDigits(newContactForm.phone);
+      if (phoneDigits.length !== 10) {
+        toast.error("Phone number must be exactly 10 digits.");
+        return;
+      }
+
       const payload = {
         name: newContactForm.name.trim(),
         relationship: newContactForm.relationship.trim(),
         category: newContactForm.category.trim(),
-        phone: newContactForm.phone.trim(),
+        phone: phoneDigits,
         email: newContactForm.email.trim() || null,
         address: newContactForm.address.trim() || null,
         notes: newContactForm.notes.trim() || null,

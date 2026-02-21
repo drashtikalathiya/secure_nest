@@ -73,6 +73,7 @@ export default function Documents() {
     isOwner || user?.permission_documents_access_level === "edit",
   );
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [familyOptions, setFamilyOptions] = useState([]);
   const [folders, setFolders] = useState(INITIAL_FOLDERS);
   const [selectedFolderId, setSelectedFolderId] = useState(null);
 
@@ -107,6 +108,15 @@ export default function Documents() {
       if (!me) return;
 
       setCurrentUserId(me.id || null);
+      setFamilyOptions(
+        members
+          .filter((member) => member.email !== user?.email)
+          .map((member) => ({
+            id: member.id,
+            name: member.name || member.email?.split("@")[0] || "Member",
+            relation: member.role === "owner" ? "Owner" : "Member",
+          })),
+      );
       setCanEditDocuments(
         me.role === "owner" || me.permission_documents_access_level === "edit",
       );
@@ -221,8 +231,8 @@ export default function Documents() {
       if (isOwner) return true;
       return Boolean(
         currentUserId &&
-          file?.created_by_user_id &&
-          file.created_by_user_id === currentUserId,
+        file?.created_by_user_id &&
+        file.created_by_user_id === currentUserId,
       );
     },
     [canEditDocuments, currentUserId, isOwner],
@@ -326,7 +336,10 @@ export default function Documents() {
       toast.error("You do not have permission to edit documents.");
       return;
     }
-    if (deleteDocumentTarget?.file && !canManageFile(deleteDocumentTarget.file)) {
+    if (
+      deleteDocumentTarget?.file &&
+      !canManageFile(deleteDocumentTarget.file)
+    ) {
       toast.error("You can delete only documents created by you.");
       return;
     }
@@ -501,7 +514,9 @@ export default function Documents() {
                   <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-700 text-sky-200">
                     <IconPlus size={16} />
                   </span>
-                  <span className="mt-3 text-sm font-semibold">Add New File</span>
+                  <span className="mt-3 text-sm font-semibold">
+                    Add New File
+                  </span>
                 </button>
               ) : null}
             </div>
@@ -541,6 +556,7 @@ export default function Documents() {
           onUpdate={handleUpdateDocument}
           mode={editDocumentTarget ? "edit" : "create"}
           initialDocument={editDocumentTarget?.file || null}
+          familyOptions={familyOptions}
         />
 
         <ConfirmModal
@@ -680,6 +696,7 @@ export default function Documents() {
         open={createFolderOpen}
         onClose={() => setCreateFolderOpen(false)}
         onCreate={handleCreateFolder}
+        familyOptions={familyOptions}
       />
 
       <ConfirmModal
@@ -708,6 +725,7 @@ export default function Documents() {
         onUpdate={handleUpdateDocument}
         mode={editDocumentTarget ? "edit" : "create"}
         initialDocument={editDocumentTarget?.file || null}
+        familyOptions={familyOptions}
       />
 
       <ConfirmModal

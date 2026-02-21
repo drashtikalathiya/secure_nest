@@ -4,14 +4,12 @@ import {
   IconFolder,
   IconHeart,
   IconHome,
-  IconLock,
-  IconUsersGroup,
   IconShield,
   IconStar,
-  IconUsers,
   IconX,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
+import VisibilityAccessSelector from "../common/VisibilityAccessSelector";
 
 const COLOR_OPTIONS = [
   { key: "blue", className: "bg-blue-500" },
@@ -31,31 +29,10 @@ const ICON_OPTIONS = [
   { key: "shield", icon: IconShield, label: "Shield" },
 ];
 
-const ACCESS_OPTIONS = [
-  {
-    key: "private",
-    title: "Private",
-    description: "Only visible to me",
-    icon: IconLock,
-  },
-  {
-    key: "family",
-    title: "Entire Family",
-    description: "Shared with all members",
-    icon: IconUsersGroup,
-  },
-  {
-    key: "specific",
-    title: "Specific Members",
-    description: "Choose who can access",
-    icon: IconUsers,
-  },
-];
-
 const DUMMY_MEMBERS = [
-  { id: "m-1", name: "Drashti", role: "Member" },
-  { id: "m-2", name: "dinebuddychef", role: "Member" },
-  { id: "m-3", name: "sifipaf888", role: "Member" },
+  { id: "m-1", name: "Drashti", relation: "Member" },
+  { id: "m-2", name: "dinebuddychef", relation: "Member" },
+  { id: "m-3", name: "sifipaf888", relation: "Member" },
 ];
 
 export default function CreateFolderModal({
@@ -65,11 +42,12 @@ export default function CreateFolderModal({
   onUpdate,
   mode = "create",
   initialFolder = null,
+  familyOptions = [],
 }) {
   const [folderName, setFolderName] = useState("");
   const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[0].key);
   const [selectedIcon, setSelectedIcon] = useState(ICON_OPTIONS[0].key);
-  const [selectedAccess, setSelectedAccess] = useState(ACCESS_OPTIONS[0].key);
+  const [selectedAccess, setSelectedAccess] = useState("private");
   const [selectedMembers, setSelectedMembers] = useState([]);
 
   useEffect(() => {
@@ -77,7 +55,7 @@ export default function CreateFolderModal({
       setFolderName("");
       setSelectedColor(COLOR_OPTIONS[0].key);
       setSelectedIcon(ICON_OPTIONS[0].key);
-      setSelectedAccess(ACCESS_OPTIONS[0].key);
+      setSelectedAccess("private");
       setSelectedMembers([]);
       return;
     }
@@ -86,7 +64,7 @@ export default function CreateFolderModal({
       setFolderName(initialFolder.name || "");
       setSelectedColor(initialFolder.color || COLOR_OPTIONS[0].key);
       setSelectedIcon(initialFolder.icon || ICON_OPTIONS[0].key);
-      setSelectedAccess(initialFolder.visibility || ACCESS_OPTIONS[0].key);
+      setSelectedAccess(initialFolder.visibility || "private");
       setSelectedMembers(
         Array.isArray(initialFolder.sharedWith) ? initialFolder.sharedWith : [],
       );
@@ -144,7 +122,9 @@ export default function CreateFolderModal({
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 px-4 py-4">
             <label className="space-y-1.5">
-              <span className="text-xs font-semibold text-slate-400">Folder Name</span>
+              <span className="text-xs font-semibold text-slate-400">
+                Folder Name
+              </span>
               <input
                 type="text"
                 value={folderName}
@@ -155,7 +135,9 @@ export default function CreateFolderModal({
             </label>
 
             <div>
-              <p className="text-xs font-semibold text-slate-400">Select Icon or Color</p>
+              <p className="text-xs font-semibold text-slate-400">
+                Select Icon or Color
+              </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {COLOR_OPTIONS.map((option) => (
                   <button
@@ -169,7 +151,9 @@ export default function CreateFolderModal({
                     }`}
                     aria-label={`Select ${option.key} color`}
                   >
-                    <span className={`h-5 w-5 rounded-full ${option.className}`} />
+                    <span
+                      className={`h-5 w-5 rounded-full ${option.className}`}
+                    />
                   </button>
                 ))}
 
@@ -196,92 +180,14 @@ export default function CreateFolderModal({
             </div>
 
             <div>
-              <p className="text-xs font-semibold text-slate-300">Who can see this folder?</p>
-              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {ACCESS_OPTIONS.map((option) => {
-                  const Icon = option.icon;
-                  const isSelected = selectedAccess === option.key;
-                  return (
-                    <button
-                      key={option.key}
-                      type="button"
-                      onClick={() => setSelectedAccess(option.key)}
-                      className={`rounded-lg border p-3 text-left transition ${
-                        isSelected
-                          ? "border-sky-500/70 bg-sky-500/10"
-                          : "border-slate-800/80 bg-slate-900/40"
-                      }`}
-                    >
-                      <div className="mb-2 flex items-center justify-between">
-                        <span
-                          className={`inline-flex h-7 w-7 items-center justify-center rounded-md ${
-                            isSelected
-                              ? "bg-sky-500/20 text-sky-200"
-                              : "bg-slate-800 text-slate-400"
-                          }`}
-                        >
-                          <Icon size={14} />
-                        </span>
-                        <span
-                          className={`h-3 w-3 rounded-full border ${
-                            isSelected
-                              ? "border-sky-400 bg-sky-400"
-                              : "border-slate-600"
-                          }`}
-                        />
-                      </div>
-                      <p className="text-xs font-semibold text-slate-100">{option.title}</p>
-                      <p className="mt-0.5 text-[11px] text-slate-500">{option.description}</p>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="mt-3 rounded-xl border border-slate-800/80 bg-[#101b30] p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                  Select Family Members
-                </p>
-                <div className="mt-2 divide-y divide-slate-800/70 overflow-hidden rounded-lg border border-slate-800/70">
-                  {DUMMY_MEMBERS.map((member) => {
-                    const checked = selectedMembers.includes(member.id);
-                    const disabled = selectedAccess !== "specific";
-                    return (
-                      <label
-                        key={member.id}
-                        className={`flex items-center justify-between px-3 py-2.5 ${
-                          disabled ? "opacity-50" : "cursor-pointer"
-                        }`}
-                      >
-                        <span className="flex items-center gap-2.5">
-                          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-sky-500/15 text-xs font-semibold text-sky-200">
-                            {member.name.charAt(0).toUpperCase()}
-                          </span>
-                          <span>
-                            <span className="block text-sm font-semibold text-slate-200">
-                              {member.name}
-                            </span>
-                            <span className="block text-[11px] text-slate-500">
-                              {member.role}
-                            </span>
-                          </span>
-                        </span>
-                        <input
-                          type="checkbox"
-                          disabled={disabled}
-                          checked={checked}
-                          onChange={() => toggleMember(member.id)}
-                          className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-primary focus:ring-primary"
-                        />
-                      </label>
-                    );
-                  })}
-                </div>
-                {selectedAccess !== "specific" ? (
-                  <p className="mt-2 text-[11px] text-slate-500">
-                    Enable <span className="text-slate-300">Specific Members</span> to choose individual access.
-                  </p>
-                ) : null}
-              </div>
+              <VisibilityAccessSelector
+                title="Who can see this folder?"
+                visibility={selectedAccess}
+                onVisibilityChange={setSelectedAccess}
+                memberOptions={familyOptions.length && familyOptions}
+                sharedWith={selectedMembers}
+                onToggleMember={toggleMember}
+              />
             </div>
           </div>
 

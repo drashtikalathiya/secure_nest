@@ -77,11 +77,13 @@ export default function ContactFormModal({
                 onChange={(event) =>
                   setNewContactForm((prev) => ({
                     ...prev,
-                    phone: event.target.value,
+                    phone: event.target.value.replace(/\D/g, "").slice(0, 10),
                   }))
                 }
+                inputMode="numeric"
+                maxLength={10}
                 className="w-full rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500/70 focus:outline-none"
-                placeholder="+1 (555) 000-0000"
+                placeholder="10-digit number"
               />
             </label>
 

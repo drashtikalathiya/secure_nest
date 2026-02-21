@@ -1,14 +1,13 @@
 import {
   IconCloudUpload,
-  IconLock,
   IconSearch,
   IconUpload,
   IconUser,
-  IconUsers,
   IconUsersGroup,
 } from "@tabler/icons-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import RightSlider from "../common/RightSlider";
+import VisibilityAccessSelector from "../common/VisibilityAccessSelector";
 
 const DOCUMENT_CATEGORIES = [
   "Identity",
@@ -43,28 +42,7 @@ const OWNER_OPTIONS = [
   { key: "family", label: "Entire Family", icon: IconUsersGroup },
 ];
 
-const ACCESS_OPTIONS = [
-  {
-    key: "private",
-    title: "Private",
-    description: "Only visible to me",
-    icon: IconLock,
-  },
-  {
-    key: "family",
-    title: "Entire Family",
-    description: "Shared with all members",
-    icon: IconUsersGroup,
-  },
-  {
-    key: "specific",
-    title: "Specific Members",
-    description: "Choose who can access",
-    icon: IconUsers,
-  },
-];
-
-const MEMBER_OPTIONS = [
+const DEFAULT_MEMBER_OPTIONS = [
   { id: "alex", name: "Alex", role: "Owner" },
   { id: "jane", name: "Jane", role: "Member" },
   { id: "billy", name: "Billy", role: "Member" },
@@ -92,6 +70,7 @@ export default function AddDocumentSlider({
   onUpdate,
   mode = "create",
   initialDocument = null,
+  familyOptions = [],
 }) {
   const fileInputRef = useRef(null);
   const [documentTitle, setDocumentTitle] = useState("");
@@ -100,7 +79,7 @@ export default function AddDocumentSlider({
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedOwner, setSelectedOwner] = useState(OWNER_OPTIONS[0].key);
-  const [visibility, setVisibility] = useState(ACCESS_OPTIONS[0].key);
+  const [visibility, setVisibility] = useState("private");
   const [sharedWith, setSharedWith] = useState([]);
   const isEditMode = mode === "edit";
 
@@ -117,7 +96,7 @@ export default function AddDocumentSlider({
     setSelectedFile(null);
     setDragActive(false);
     setSelectedOwner(OWNER_OPTIONS[0].key);
-    setVisibility(ACCESS_OPTIONS[0].key);
+    setVisibility("private");
     setSharedWith([]);
   };
 
@@ -133,7 +112,7 @@ export default function AddDocumentSlider({
     setDocumentTitle(initialDocument.title || initialDocument.name || "");
     setFolderId(defaultFolderId || "");
     setSelectedOwner(initialDocument.owner || OWNER_OPTIONS[0].key);
-    setVisibility(initialDocument.visibility || ACCESS_OPTIONS[0].key);
+    setVisibility(initialDocument.visibility || "private");
     setSharedWith(Array.isArray(initialDocument.sharedWith) ? initialDocument.sharedWith : []);
   }, [defaultFolderId, initialDocument, isEditMode, open]);
 
@@ -365,86 +344,14 @@ export default function AddDocumentSlider({
             </div>
           </div>
 
-          <div>
-            <p className="text-sm font-semibold text-slate-200">
-              Who can see this document?
-            </p>
-            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              {ACCESS_OPTIONS.map((option) => {
-                const AccessIcon = option.icon;
-                const isSelected = visibility === option.key;
-                return (
-                  <button
-                    key={option.key}
-                    type="button"
-                    onClick={() => setVisibility(option.key)}
-                    className={`rounded-lg border p-3 text-left transition ${
-                      isSelected
-                        ? "border-sky-500/70 bg-sky-500/10"
-                        : "border-slate-800/80 bg-slate-900/40"
-                    }`}
-                  >
-                    <span
-                      className={`inline-flex h-7 w-7 items-center justify-center rounded-md ${
-                        isSelected
-                          ? "bg-sky-500/20 text-sky-200"
-                          : "bg-slate-800 text-slate-400"
-                      }`}
-                    >
-                      <AccessIcon size={14} />
-                    </span>
-                    <p className="mt-2 text-xs font-semibold text-slate-100">
-                      {option.title}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-slate-500">
-                      {option.description}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-3 rounded-xl border border-slate-800/80 bg-[#101b30] p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                Select Family Members
-              </p>
-              <div className="mt-2 divide-y divide-slate-800/70 overflow-hidden rounded-lg border border-slate-800/70">
-                {MEMBER_OPTIONS.map((member) => {
-                  const checked = sharedWith.includes(member.id);
-                  const disabled = visibility !== "specific";
-                  return (
-                    <label
-                      key={member.id}
-                      className={`flex items-center justify-between px-3 py-2.5 ${
-                        disabled ? "opacity-50" : "cursor-pointer"
-                      }`}
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-sky-500/15 text-xs font-semibold text-sky-200">
-                          {member.name.charAt(0).toUpperCase()}
-                        </span>
-                        <span>
-                          <span className="block text-sm font-semibold text-slate-200">
-                            {member.name}
-                          </span>
-                          <span className="block text-[11px] text-slate-500">
-                            {member.role}
-                          </span>
-                        </span>
-                      </span>
-                      <input
-                        type="checkbox"
-                        disabled={disabled}
-                        checked={checked}
-                        onChange={() => toggleMember(member.id)}
-                        className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-primary focus:ring-primary"
-                      />
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+          <VisibilityAccessSelector
+            title="Who can see this document?"
+            visibility={visibility}
+            onVisibilityChange={setVisibility}
+            memberOptions={familyOptions.length ? familyOptions : DEFAULT_MEMBER_OPTIONS}
+            sharedWith={sharedWith}
+            onToggleMember={toggleMember}
+          />
         </div>
 
         <div className="shrink-0 border-t border-slate-800/80 px-5 py-4">
