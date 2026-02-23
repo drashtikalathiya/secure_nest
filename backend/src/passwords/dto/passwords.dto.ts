@@ -1,4 +1,4 @@
-import type { PasswordRecord } from './password.entity';
+import type { PasswordRecord } from '../password.entity';
 
 export type PasswordVisibility = 'private' | 'family' | 'specific';
 

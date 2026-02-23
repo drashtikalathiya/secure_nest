@@ -2,9 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { User } from '../users/user.entity';
 
 @Entity('passwords')
 export class PasswordRecord {
@@ -16,6 +19,10 @@ export class PasswordRecord {
 
   @Column()
   created_by_user_id: string;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'created_by_user_id' })
+  created_by_user?: User;
 
   @Column()
   site_name: string;

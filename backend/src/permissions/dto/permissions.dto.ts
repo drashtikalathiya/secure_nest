@@ -1,4 +1,4 @@
-import type { AccessLevel } from './permission-profile.entity';
+import type { AccessLevel } from '../permission-profile.entity';
 
 export type PermissionModule = 'passwords' | 'contacts' | 'documents';
 

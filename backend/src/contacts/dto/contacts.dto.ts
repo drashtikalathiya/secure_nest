@@ -1,4 +1,4 @@
-import type { Contact } from './contact.entity';
+import type { Contact } from '../contact.entity';
 
 export type ContactPermissionsDto = {
   view: boolean;
