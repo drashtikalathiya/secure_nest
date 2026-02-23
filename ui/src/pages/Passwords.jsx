@@ -15,7 +15,6 @@ import {
   PASSWORD_CATEGORY_ICONS,
   PASSWORD_CATEGORY_OPTIONS,
 } from "../const/passwordsData";
-import { auth } from "../services/firebase";
 import { getFamilyMembers } from "../services/usersApi";
 import {
   createPassword,
@@ -105,19 +104,11 @@ export default function Passwords() {
   };
 
   const loadData = useCallback(async () => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
-      setCards([]);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
-      const token = await currentUser.getIdToken();
       const [passwordRes, membersRes] = await Promise.all([
-        getPasswords(token),
-        getFamilyMembers(token),
+        getPasswords(),
+        getFamilyMembers(),
       ]);
 
       const passwordData = passwordRes?.data || {};
@@ -161,7 +152,6 @@ export default function Passwords() {
 
     try {
       setSaveLoading(true);
-      const token = await auth.currentUser.getIdToken();
       const payload = {
         name: form.name,
         category: form.category,
@@ -173,10 +163,10 @@ export default function Passwords() {
       };
 
       if (editingPasswordId) {
-        await updatePassword(token, editingPasswordId, payload);
+        await updatePassword(editingPasswordId, payload);
         toast.success("Password updated.");
       } else {
-        await createPassword(token, payload);
+        await createPassword(payload);
         toast.success("Password saved.");
       }
 
@@ -199,8 +189,7 @@ export default function Passwords() {
 
     try {
       setDeleteLoading(true);
-      const token = await auth.currentUser.getIdToken();
-      await deletePassword(token, deleteTarget.id);
+      await deletePassword(deleteTarget.id);
       toast.success("Password deleted.");
       setDeleteTarget(null);
       await loadData();

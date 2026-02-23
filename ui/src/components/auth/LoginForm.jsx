@@ -6,6 +6,7 @@ import { backendLogin, getPostLoginPath } from "../../services/authApi";
 import { acceptInvitation } from "../../services/invitationsApi";
 import { validateLogin } from "../../utils/validators";
 import toast from "react-hot-toast";
+import { setAuthToken } from "../../services/apiClient";
 
 export default function LoginForm() {
   const [searchParams] = useSearchParams();
@@ -66,13 +67,14 @@ export default function LoginForm() {
 
       const firebaseUser = await firebaseLogin(email, password);
       const idToken = await firebaseUser.getIdToken();
+      setAuthToken(idToken);
 
       if (inviteToken) {
-        await acceptInvitation(inviteToken, idToken);
+        await acceptInvitation(inviteToken);
         toast.success("Invitation accepted successfully!");
       }
 
-      const { data } = await backendLogin(idToken);
+      const { data } = await backendLogin();
 
       toast.success("User login successfully!");
 

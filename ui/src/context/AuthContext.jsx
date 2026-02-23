@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../services/firebase";
 import { backendLogin } from "../services/authApi";
+import { clearAuthToken, setAuthToken } from "../services/apiClient";
 
 const AuthContext = createContext();
 
@@ -30,6 +31,7 @@ export const AuthProvider = ({ children }) => {
             syncUserSession(auth.currentUser, version);
             return;
           }
+          clearAuthToken();
           setUser(null);
           setIsSubscribed(false);
           setLoading(false);
@@ -45,7 +47,8 @@ export const AuthProvider = ({ children }) => {
         }
 
         const token = await currentUser.getIdToken();
-        const { data } = await backendLogin(token);
+        setAuthToken(token);
+        const { data } = await backendLogin();
 
         const tokenResult = await currentUser.getIdTokenResult(true);
 

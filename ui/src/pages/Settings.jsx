@@ -20,7 +20,6 @@ import {
   normalizePlanId,
 } from "../const/subscriptionPlans";
 import { createCheckoutSession } from "../services/billingApi";
-import { auth } from "../services/firebase";
 
 export default function Settings() {
   const { user, setUser, isSubscribed } = useAuth();
@@ -43,10 +42,6 @@ export default function Settings() {
 
   const handlePlanChange = async (plan) => {
     if (!isOwner) return;
-    if (!auth.currentUser) {
-      toast.error("Not authenticated.");
-      return;
-    }
 
     if (isSubscribed && plan.id === activePlanId) {
       toast("You are already on this plan.");
@@ -55,8 +50,7 @@ export default function Settings() {
 
     try {
       setPlanLoadingId(plan.id);
-      const token = await auth.currentUser.getIdToken();
-      const { url } = await createCheckoutSession(plan.price_id, token);
+      const { url } = await createCheckoutSession(plan.price_id);
       window.location.href = url;
     } catch (error) {
       toast.error(error?.message || "Failed to change plan.");

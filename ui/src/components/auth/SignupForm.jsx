@@ -21,6 +21,7 @@ import {
 import { validateSignup } from "../../utils/validators";
 import toast from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
+import { setAuthToken } from "../../services/apiClient";
 
 const SIGNUP_IN_PROGRESS_KEY = "sn_signup_in_progress";
 
@@ -95,9 +96,10 @@ export default function SignupForm() {
 
       const firebaseUser = await firebaseSignup(email, password);
       const idToken = await firebaseUser.getIdToken();
+      setAuthToken(idToken);
 
       if (profileImage) {
-        const uploadRes = await uploadSignupProfilePhoto(idToken, profileImage);
+        const uploadRes = await uploadSignupProfilePhoto(profileImage);
         uploadedPhotoUrl = uploadRes?.data?.profile_photo_url || "";
       }
 
@@ -117,7 +119,7 @@ export default function SignupForm() {
         payload.photo_url = uploadedPhotoUrl;
       }
 
-      const { data } = await backendSignup(idToken, payload);
+      const { data } = await backendSignup(payload);
       sessionStorage.removeItem(SIGNUP_IN_PROGRESS_KEY);
       await refreshSession();
 

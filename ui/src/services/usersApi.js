@@ -1,106 +1,50 @@
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3001";
+import { axiosInstance } from "./apiClient";
 
-const getApiError = (data, fallback) => data?.error || data?.message || fallback;
-
-export const getFamilyMembers = async (token) => {
-  const res = await fetch(`${API_URL}/users/family-members`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+export const getFamilyMembers = async () => {
+  const { data } = await axiosInstance.get("/users/family-members", {
+    meta: { fallbackMessage: "Failed to fetch family members" },
   });
-
-  const data = await res.json();
-  if (!res.ok || !data?.success) {
-    throw new Error(getApiError(data, "Failed to fetch family members"));
-  }
-
   return data;
 };
 
-export const uploadMyProfilePhoto = async (token, file) => {
+export const uploadMyProfilePhoto = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await fetch(`${API_URL}/users/me/profile-photo`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    body: formData,
-  });
-
-  const data = await res.json();
-  if (!res.ok || !data?.success) {
-    throw new Error(getApiError(data, "Failed to upload profile photo"));
-  }
-
+  const { data } = await axiosInstance.patch(
+    "/users/me/profile-photo",
+    formData,
+    { meta: { fallbackMessage: "Failed to upload profile photo" } },
+  );
   return data;
 };
 
-export const removeMyProfilePhoto = async (token) => {
-  const res = await fetch(`${API_URL}/users/me/profile-photo`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+export const removeMyProfilePhoto = async () => {
+  const { data } = await axiosInstance.delete("/users/me/profile-photo", {
+    meta: { fallbackMessage: "Failed to remove profile photo" },
   });
-
-  const data = await res.json();
-  if (!res.ok || !data?.success) {
-    throw new Error(getApiError(data, "Failed to remove profile photo"));
-  }
-
   return data;
 };
 
-export const updateMyProfile = async (token, body) => {
-  const res = await fetch(`${API_URL}/users/me`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
+export const updateMyProfile = async (body) => {
+  const { data } = await axiosInstance.patch("/users/me", body, {
+    meta: { fallbackMessage: "Failed to update profile" },
   });
-
-  const data = await res.json();
-  if (!res.ok || !data?.success) {
-    throw new Error(getApiError(data, "Failed to update profile"));
-  }
-
   return data;
 };
 
-export const updateMemberPermissions = async (token, memberId, body) => {
-  const res = await fetch(`${API_URL}/users/${memberId}/permissions`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-  });
-
-  const data = await res.json();
-  if (!res.ok || !data?.success) {
-    throw new Error(getApiError(data, "Failed to update member permissions"));
-  }
-
+export const updateMemberPermissions = async (memberId, body) => {
+  const { data } = await axiosInstance.patch(
+    `/users/${memberId}/permissions`,
+    body,
+    { meta: { fallbackMessage: "Failed to update member permissions" } },
+  );
   return data;
 };
 
-export const deleteFamilyMember = async (token, memberId) => {
-  const res = await fetch(`${API_URL}/users/${memberId}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+export const deleteFamilyMember = async (memberId) => {
+  const { data } = await axiosInstance.delete(`/users/${memberId}`, {
+    meta: { fallbackMessage: "Failed to delete family member" },
   });
-
-  const data = await res.json();
-  if (!res.ok || !data?.success) {
-    throw new Error(getApiError(data, "Failed to delete family member"));
-  }
-
   return data;
 };

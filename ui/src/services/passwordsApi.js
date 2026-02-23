@@ -1,60 +1,31 @@
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3001";
+import { axiosInstance } from "./apiClient";
 
-const getApiError = (data, fallback) => data?.error || data?.message || fallback;
-
-const parseResponse = async (res, fallbackMessage) => {
-  const data = await res.json();
-
-  if (!res.ok || !data?.success) {
-    throw new Error(getApiError(data, fallbackMessage));
-  }
-
+export const getPasswords = async () => {
+  const { data } = await axiosInstance.get("/passwords", {
+    meta: { fallbackMessage: "Failed to fetch passwords" },
+  });
   return data;
 };
 
-export const getPasswords = async (token) => {
-  const res = await fetch(`${API_URL}/passwords`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+export const createPassword = async (body) => {
+  const { data } = await axiosInstance.post("/passwords", body, {
+    meta: { fallbackMessage: "Failed to create password" },
   });
-
-  return parseResponse(res, "Failed to fetch passwords");
+  return data;
 };
 
-export const createPassword = async (token, body) => {
-  const res = await fetch(`${API_URL}/passwords`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
-  });
-
-  return parseResponse(res, "Failed to create password");
+export const updatePassword = async (passwordId, body) => {
+  const { data } = await axiosInstance.patch(
+    `/passwords/${passwordId}`,
+    body,
+    { meta: { fallbackMessage: "Failed to update password" } },
+  );
+  return data;
 };
 
-export const updatePassword = async (token, passwordId, body) => {
-  const res = await fetch(`${API_URL}/passwords/${passwordId}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
+export const deletePassword = async (passwordId) => {
+  const { data } = await axiosInstance.delete(`/passwords/${passwordId}`, {
+    meta: { fallbackMessage: "Failed to delete password" },
   });
-
-  return parseResponse(res, "Failed to update password");
-};
-
-export const deletePassword = async (token, passwordId) => {
-  const res = await fetch(`${API_URL}/passwords/${passwordId}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  return parseResponse(res, "Failed to delete password");
+  return data;
 };

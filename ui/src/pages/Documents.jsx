@@ -23,7 +23,6 @@ import PageHeader from "../components/common/PageHeader";
 import { FOLDER_STYLE_COLORS, INITIAL_FOLDERS } from "../const/documentsData";
 import { PAGE_META } from "../const/pageMeta";
 import { useAuth } from "../context/AuthContext";
-import { auth } from "../services/firebase";
 import { getFamilyMembers } from "../services/usersApi";
 
 const FOLDER_ICONS = {
@@ -97,11 +96,8 @@ export default function Documents() {
   const recentFiles = useMemo(() => toRecentFileItems(folders), [folders]);
 
   const loadDocumentPermission = useCallback(async () => {
-    if (!auth.currentUser) return;
-
     try {
-      const token = await auth.currentUser.getIdToken();
-      const membersRes = await getFamilyMembers(token);
+      const membersRes = await getFamilyMembers();
       const members = Array.isArray(membersRes?.data) ? membersRes.data : [];
       const me = members.find((member) => member.email === user?.email);
 

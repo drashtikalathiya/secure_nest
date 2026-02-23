@@ -2,13 +2,11 @@ import { useState } from "react";
 import { IconShieldCheck, IconClock } from "@tabler/icons-react";
 import PlanCard from "../components/PlanCard";
 import { createCheckoutSession } from "../services/billingApi";
-import { auth } from "../services/firebase";
 import { SUBSCRIPTION_PLANS } from "../const/subscriptionPlans";
 
 const handleSubscribe = async (priceId) => {
   try {
-    const token = await auth.currentUser.getIdToken();
-    const { url } = await createCheckoutSession(priceId, token);
+    const { url } = await createCheckoutSession(priceId);
 
     window.location.href = url;
   } catch (error) {

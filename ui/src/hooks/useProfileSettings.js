@@ -22,12 +22,6 @@ export function useProfileSettings(user, setUser) {
   const [loading, setLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  const withToken = async (fn) => {
-    if (!auth.currentUser) throw new Error("Not authenticated");
-    const token = await auth.currentUser.getIdToken();
-    return fn(token);
-  };
-
   const resetForm = () => {
     setProfileForm({
       name: user?.name || "",
@@ -45,20 +39,18 @@ export function useProfileSettings(user, setUser) {
   useEffect(() => {
     const loadMemberDate = async () => {
       try {
-        await withToken(async (token) => {
-          const res = await getFamilyMembers(token);
-          const members = Array.isArray(res?.data) ? res.data : [];
-          const me = members.find((m) => m.email === user?.email);
-          if (me?.created_at) {
-            const date = new Date(me.created_at);
-            setMemberSince(
-              `Member since ${date.toLocaleDateString(undefined, {
-                month: "short",
-                year: "numeric",
-              })}`,
-            );
-          }
-        });
+        const res = await getFamilyMembers();
+        const members = Array.isArray(res?.data) ? res.data : [];
+        const me = members.find((m) => m.email === user?.email);
+        if (me?.created_at) {
+          const date = new Date(me.created_at);
+          setMemberSince(
+            `Member since ${date.toLocaleDateString(undefined, {
+              month: "short",
+              year: "numeric",
+            })}`,
+          );
+        }
       } catch {
         setMemberSince("Member");
       }
@@ -88,7 +80,7 @@ export function useProfileSettings(user, setUser) {
     try {
       setUploadingPhoto(true);
 
-      const res = await withToken((token) => uploadMyProfilePhoto(token, file));
+      const res = await uploadMyProfilePhoto(file);
       const nextPhotoUrl = res?.data?.profile_photo_url || "";
 
       setProfileForm((prev) => ({
@@ -124,7 +116,7 @@ export function useProfileSettings(user, setUser) {
     }));
 
     try {
-      await withToken((token) => removeMyProfilePhoto(token));
+      await removeMyProfilePhoto();
 
       await updateFirebaseUserProfile(auth.currentUser, {
         photoURL: null,
@@ -157,12 +149,10 @@ export function useProfileSettings(user, setUser) {
     try {
       setLoading(true);
 
-      await withToken((token) =>
-        updateMyProfile(token, {
-          name: trimmedName,
-          profilePhotoUrl: trimmedPhoto || null,
-        }),
-      );
+      await updateMyProfile({
+        name: trimmedName,
+        profilePhotoUrl: trimmedPhoto || null,
+      });
 
       await updateFirebaseUserProfile(auth.currentUser, {
         displayName: trimmedName,

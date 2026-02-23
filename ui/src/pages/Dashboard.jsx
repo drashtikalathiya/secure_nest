@@ -6,7 +6,6 @@ import PageHeader from "../components/common/PageHeader";
 import { VAULT_SECTIONS } from "../const/dashboardData";
 import { PAGE_META } from "../const/pageMeta";
 import { getFamilyMembers } from "../services/usersApi";
-import { auth } from "../services/firebase";
 import { canViewModule } from "../utils/permissions";
 
 export default function Dashboard() {
@@ -26,15 +25,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     const loadActiveMembers = async () => {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        setMembers([]);
-        return;
-      }
-
       try {
-        const token = await currentUser.getIdToken();
-        const data = await getFamilyMembers(token);
+        const data = await getFamilyMembers();
         setMembers(Array.isArray(data?.data) ? data.data : []);
       } catch (error) {
         setMembers([]);

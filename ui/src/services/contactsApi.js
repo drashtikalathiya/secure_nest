@@ -1,60 +1,29 @@
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3001";
+import { axiosInstance } from "./apiClient";
 
-const getApiError = (data, fallback) => data?.error || data?.message || fallback;
-
-const parseResponse = async (res, fallbackMessage) => {
-  const data = await res.json();
-
-  if (!res.ok || !data?.success) {
-    throw new Error(getApiError(data, fallbackMessage));
-  }
-
+export const getContacts = async () => {
+  const { data } = await axiosInstance.get("/contacts", {
+    meta: { fallbackMessage: "Failed to fetch contacts" },
+  });
   return data;
 };
 
-export const getContacts = async (token) => {
-  const res = await fetch(`${API_URL}/contacts`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+export const createContact = async (body) => {
+  const { data } = await axiosInstance.post("/contacts", body, {
+    meta: { fallbackMessage: "Failed to create contact" },
   });
-
-  return parseResponse(res, "Failed to fetch contacts");
+  return data;
 };
 
-export const createContact = async (token, body) => {
-  const res = await fetch(`${API_URL}/contacts`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
+export const updateContact = async (contactId, body) => {
+  const { data } = await axiosInstance.patch(`/contacts/${contactId}`, body, {
+    meta: { fallbackMessage: "Failed to update contact" },
   });
-
-  return parseResponse(res, "Failed to create contact");
+  return data;
 };
 
-export const updateContact = async (token, contactId, body) => {
-  const res = await fetch(`${API_URL}/contacts/${contactId}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(body),
+export const deleteContact = async (contactId) => {
+  const { data } = await axiosInstance.delete(`/contacts/${contactId}`, {
+    meta: { fallbackMessage: "Failed to delete contact" },
   });
-
-  return parseResponse(res, "Failed to update contact");
-};
-
-export const deleteContact = async (token, contactId) => {
-  const res = await fetch(`${API_URL}/contacts/${contactId}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  return parseResponse(res, "Failed to delete contact");
+  return data;
 };

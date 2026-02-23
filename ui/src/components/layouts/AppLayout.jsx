@@ -13,6 +13,7 @@ import { firebaseLogout } from "../../services/firebaseAuth";
 import { NAV_ITEMS } from "../../const/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { canViewModule } from "../../utils/permissions";
+import { clearAuthToken } from "../../services/apiClient";
 
 function BrandBlock({ className = "" }) {
   return (
@@ -80,6 +81,7 @@ export default function AppLayout() {
   const handleLogout = async () => {
     try {
       await firebaseLogout();
+      clearAuthToken();
       navigate("/login");
     } catch (error) {
       console.error("Logout failed", error);

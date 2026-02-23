@@ -10,7 +10,6 @@ import ConfirmModal from "../components/common/ConfirmModal";
 import PageHeader from "../components/common/PageHeader";
 import MemberPermissionsFields from "../components/members/MemberPermissionsFields";
 import { useAuth } from "../context/AuthContext";
-import { auth } from "../services/firebase";
 import {
   cancelInvitation,
   createInvitation,
@@ -202,17 +201,11 @@ export default function Members() {
   }, [normalizedMembers]);
 
   const loadData = useCallback(async () => {
-    if (!auth.currentUser) {
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
-      const token = await auth.currentUser.getIdToken();
       const [membersRes, invitesRes] = await Promise.all([
-        getFamilyMembers(token),
-        isOwner ? getPendingInvitations(token) : Promise.resolve({ data: [] }),
+        getFamilyMembers(),
+        isOwner ? getPendingInvitations() : Promise.resolve({ data: [] }),
       ]);
 
       setMembers(membersRes?.data || []);
@@ -254,12 +247,7 @@ export default function Members() {
 
     try {
       setPermissionSaving(true);
-      const token = await auth.currentUser.getIdToken();
-      await updateMemberPermissions(
-        token,
-        activeSliderMember.id,
-        permissionDraft,
-      );
+      await updateMemberPermissions(activeSliderMember.id, permissionDraft);
 
       const memberKey = getMemberKey(activeSliderMember);
       setPermissions((prev) => ({
@@ -286,8 +274,7 @@ export default function Members() {
 
     try {
       setInviteLoading(true);
-      const token = await auth.currentUser.getIdToken();
-      await createInvitation(token, {
+      await createInvitation({
         email: inviteEmail.trim(),
         role: "member",
         ...invitePermissions,
@@ -314,9 +301,8 @@ export default function Members() {
 
   const handleResend = async (invitationId) => {
     try {
-      const token = await auth.currentUser.getIdToken();
       setInviteActionLoadingById((prev) => ({ ...prev, [invitationId]: true }));
-      await resendInvitation(token, invitationId);
+      await resendInvitation(invitationId);
       toast.success("Invitation resent.");
       await loadData();
     } catch (error) {
@@ -331,9 +317,8 @@ export default function Members() {
 
   const handleCancel = async (invitationId) => {
     try {
-      const token = await auth.currentUser.getIdToken();
       setInviteActionLoadingById((prev) => ({ ...prev, [invitationId]: true }));
-      await cancelInvitation(token, invitationId);
+      await cancelInvitation(invitationId);
       toast.success("Invitation deleted.");
       await loadData();
     } catch (error) {
@@ -351,8 +336,7 @@ export default function Members() {
 
     try {
       setDeleteLoading(true);
-      const token = await auth.currentUser.getIdToken();
-      await deleteFamilyMember(token, memberToDelete.id);
+      await deleteFamilyMember(memberToDelete.id);
       toast.success("Member deleted.");
       setMemberToDelete(null);
       setActiveSliderMode(null);

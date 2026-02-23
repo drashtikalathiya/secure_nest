@@ -7,7 +7,6 @@ import ContactCard from "../components/contacts/ContactCard";
 import ContactFormModal from "../components/contacts/ContactFormModal";
 import { useAuth } from "../context/AuthContext";
 import { CATEGORY_OPTIONS, RELATIONSHIP_OPTIONS } from "../const/contactsData";
-import { auth } from "../services/firebase";
 import { getFamilyMembers } from "../services/usersApi";
 import {
   createContact,
@@ -65,17 +64,11 @@ export default function Contacts() {
   }, [allContacts, search]);
 
   const loadContacts = useCallback(async () => {
-    if (!auth.currentUser) {
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
     try {
-      const token = await auth.currentUser.getIdToken();
       const [contactsRes, membersRes] = await Promise.all([
-        getContacts(token),
-        getFamilyMembers(token),
+        getContacts(),
+        getFamilyMembers(),
       ]);
 
       setAllContacts(contactsRes?.data?.items || []);
@@ -143,8 +136,6 @@ export default function Contacts() {
 
     setSubmitLoading(true);
     try {
-      const token = await auth.currentUser.getIdToken();
-
       if (!newContactForm.name.trim() || !newContactForm.phone.trim()) {
         toast.error("Contact name and phone number are required.");
         return;
@@ -167,14 +158,14 @@ export default function Contacts() {
       };
 
       if (editingId) {
-        const response = await updateContact(token, editingId, payload);
+        const response = await updateContact(editingId, payload);
         const updated = response?.data;
         setAllContacts((prev) =>
           prev.map((item) => (item.id === editingId ? updated : item)),
         );
         toast.success("Contact updated.");
       } else {
-        const response = await createContact(token, payload);
+        const response = await createContact(payload);
         const created = response?.data;
         setAllContacts((prev) => [created, ...prev]);
         toast.success("Contact added.");
@@ -198,8 +189,7 @@ export default function Contacts() {
 
     try {
       setDeleteLoading(true);
-      const token = await auth.currentUser.getIdToken();
-      await deleteContact(token, deleteTarget.id);
+      await deleteContact(deleteTarget.id);
       setAllContacts((prev) =>
         prev.filter((item) => item.id !== deleteTarget.id),
       );

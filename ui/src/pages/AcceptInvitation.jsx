@@ -7,6 +7,7 @@ import {
   validateInvitationToken,
 } from "../services/invitationsApi";
 import { auth } from "../services/firebase";
+import { setAuthToken } from "../services/apiClient";
 
 export default function AcceptInvitation() {
   const [searchParams] = useSearchParams();
@@ -49,7 +50,8 @@ export default function AcceptInvitation() {
 
           try {
             const authToken = await currentUser.getIdToken();
-            await acceptInvitation(token, authToken);
+            setAuthToken(authToken);
+            await acceptInvitation(token);
             toast.success("Invitation accepted.");
             navigate("/dashboard", { replace: true });
           } catch (acceptError) {
