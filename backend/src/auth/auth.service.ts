@@ -13,6 +13,11 @@ import { InvitationsService } from '../invitations/invitations.service';
 import { getErrorMessage } from '../utils/errorMessage';
 import { CloudinaryService } from '../users/cloudinary.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import {
+  SUBSCRIPTION_PLANS,
+  USER_ROLES,
+  type SubscriptionPlan,
+} from '../utils/constants';
 
 @Injectable()
 export class AuthService {
@@ -103,8 +108,8 @@ export class AuthService {
       email,
       name: name || null,
       profile_photo_url: profilePhotoUrl || null,
-      role: 'owner',
-      subscription_plan: 'small',
+      role: USER_ROLES.OWNER,
+      subscription_plan: SUBSCRIPTION_PLANS.SMALL,
       permission_profile_id: null,
     });
 
@@ -133,7 +138,7 @@ export class AuthService {
       email,
       name: name || null,
       profile_photo_url: profilePhotoUrl || null,
-      role: 'member',
+      role: USER_ROLES.MEMBER,
       permission_profile_id: null,
     });
 
@@ -165,12 +170,16 @@ export class AuthService {
   private async authPayload(user: User) {
     const owner = await this.getOwnerForUser(user);
     const isSubscribed =
-      user.role === 'owner'
+      user.role === USER_ROLES.OWNER
         ? Boolean(user.is_subscribed)
         : Boolean(owner?.is_subscribed);
-    const subscriptionPlan = owner?.subscription_plan || user.subscription_plan || 'small';
+    const subscriptionPlan =
+      owner?.subscription_plan || user.subscription_plan || SUBSCRIPTION_PLANS.SMALL;
 
-    if (user.role === 'member' && user.subscription_plan !== subscriptionPlan) {
+    if (
+      user.role === USER_ROLES.MEMBER &&
+      user.subscription_plan !== subscriptionPlan
+    ) {
       await this.userRepo.update(user.id, {
         subscription_plan: subscriptionPlan,
       });
@@ -197,7 +206,7 @@ export class AuthService {
   }
 
   private async getOwnerForUser(user: User): Promise<User | null> {
-    if (user.role === 'owner') {
+    if (user.role === USER_ROLES.OWNER) {
       return user;
     }
 
@@ -206,12 +215,12 @@ export class AuthService {
     }
 
     return this.userRepo.findOne({
-      where: { id: user.family_owner_id, role: 'owner' },
+      where: { id: user.family_owner_id, role: USER_ROLES.OWNER },
     });
   }
 
   private async ensureOwnerFamilyId(user: User) {
-    if (user.role === 'owner' && !user.family_owner_id) {
+    if (user.role === USER_ROLES.OWNER && !user.family_owner_id) {
       user.family_owner_id = user.id;
       await this.userRepo.save(user);
     }
@@ -220,7 +229,7 @@ export class AuthService {
   private async syncFirebaseClaims(
     user: User,
     effectiveSubscription: boolean,
-    subscriptionPlan: 'small' | 'family',
+    subscriptionPlan: SubscriptionPlan,
   ): Promise<void> {
     try {
       const userRecord = await admin.auth().getUser(user.firebase_uid);

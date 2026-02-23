@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { Contact } from './contact.entity';
 import { PermissionsService } from '../permissions/permissions.service';
+import { USER_ROLES } from '../utils/constants';
 
 @Injectable()
 export class ContactsService {
@@ -90,7 +91,7 @@ export class ContactsService {
     }
 
     if (
-      requester.role !== 'owner' &&
+      requester.role !== USER_ROLES.OWNER &&
       existing.created_by_user_id !== requester.id
     ) {
       throw new ForbiddenException('Only creator can edit this contact.');
@@ -145,7 +146,7 @@ export class ContactsService {
     }
 
     if (
-      requester.role !== 'owner' &&
+      requester.role !== USER_ROLES.OWNER &&
       existing.created_by_user_id !== requester.id
     ) {
       throw new ForbiddenException('Only creator can delete this contact.');
@@ -191,7 +192,7 @@ export class ContactsService {
   }
 
   private getFamilyOwnerId(user: User): string {
-    if (user.role === 'owner') return user.id;
+    if (user.role === USER_ROLES.OWNER) return user.id;
 
     if (!user.family_owner_id) {
       throw new ForbiddenException(

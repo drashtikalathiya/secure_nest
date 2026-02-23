@@ -16,10 +16,15 @@ import { getErrorMessage } from '../utils/errorMessage';
 import { renderInvitationEmailHtml } from '../utils/emailTemplates';
 import {
   getPlanMemberLimit,
-  SubscriptionPlan,
 } from '../billing/subscription-plan';
 import { DEFAULT_MEMBER_PERMISSIONS } from '../permissions/permissions.utils';
 import { PermissionsService } from '../permissions/permissions.service';
+import {
+  SUBSCRIPTION_PLANS,
+  USER_ROLES,
+  type SubscriptionPlan,
+  type UserRole,
+} from '../utils/constants';
 
 const INVITE_EXPIRY_DAYS = 7;
 
@@ -44,13 +49,13 @@ export class InvitationsService {
     const email = String(body?.email || '')
       .trim()
       .toLowerCase();
-    const role = String(body?.role || 'member').toLowerCase();
+    const role = String(body?.role || USER_ROLES.MEMBER).toLowerCase();
 
     if (!email) {
       throw new BadRequestException('Email is required.');
     }
 
-    if (role !== 'member') {
+    if (role !== USER_ROLES.MEMBER) {
       throw new BadRequestException('Only member invitations are allowed.');
     }
 
@@ -74,7 +79,7 @@ export class InvitationsService {
     const invite = this.inviteRepo.create({
       owner_id: owner.id,
       email,
-      role: 'member',
+      role: USER_ROLES.MEMBER,
       permission_profile_id: permissionProfileId,
       token,
       status: 'pending',
@@ -223,7 +228,7 @@ export class InvitationsService {
 
     if (existingUser) {
       const existingOwnerId =
-        existingUser.role === 'owner'
+        existingUser.role === USER_ROLES.OWNER
           ? existingUser.id
           : existingUser.family_owner_id;
 
@@ -330,7 +335,7 @@ export class InvitationsService {
 
   private async getOwnerByFirebaseUid(firebaseUid: string, message: string) {
     const user = await this.getUserByFirebaseUid(firebaseUid);
-    if (user.role !== 'owner') {
+    if (user.role !== USER_ROLES.OWNER) {
       throw new ForbiddenException(message);
     }
     return user;
@@ -338,7 +343,7 @@ export class InvitationsService {
 
   private async findOwnerById(ownerId: string) {
     const owner = await this.userRepo.findOne({
-      where: { id: ownerId, role: 'owner' },
+      where: { id: ownerId, role: USER_ROLES.OWNER },
     });
     if (!owner) {
       throw new NotFoundException('Invitation owner was not found.');
@@ -388,7 +393,7 @@ export class InvitationsService {
     await this.ensureOwnerWithinSubscriptionMemberLimit(owner);
 
     await this.userRepo.update(user.id, {
-      role: 'member',
+      role: USER_ROLES.MEMBER,
       family_owner_id: owner.id,
       permission_profile_id: invite.permission_profile_id || null,
     });
@@ -403,7 +408,7 @@ export class InvitationsService {
 
     await this.syncFirebaseClaims(
       user.firebase_uid,
-      'member',
+      USER_ROLES.MEMBER,
       effectiveSubscription,
       owner.subscription_plan,
     );
@@ -411,7 +416,7 @@ export class InvitationsService {
     const permissions = await this.mapInvitePermissions(invite);
 
     return {
-      role: 'member',
+      role: USER_ROLES.MEMBER,
       is_subscribed: effectiveSubscription,
       family_owner_id: owner.id,
       subscription_plan: owner.subscription_plan,
@@ -437,7 +442,7 @@ export class InvitationsService {
 
     const memberLimit = getPlanMemberLimit(owner.subscription_plan);
     const activeMembers = await this.userRepo.count({
-      where: { family_owner_id: owner.id, role: 'member' },
+      where: { family_owner_id: owner.id, role: USER_ROLES.MEMBER },
     });
 
     if (activeMembers >= memberLimit) {
@@ -448,12 +453,12 @@ export class InvitationsService {
   }
 
   private getPlanLabel(plan: SubscriptionPlan) {
-    return plan === 'family' ? 'Family Nest' : 'Small Nest';
+    return plan === SUBSCRIPTION_PLANS.FAMILY ? 'Family Nest' : 'Small Nest';
   }
 
   private async syncFirebaseClaims(
     firebaseUid: string,
-    role: 'owner' | 'member',
+    role: UserRole,
     isSubscribed: boolean,
     subscriptionPlan: SubscriptionPlan,
   ) {

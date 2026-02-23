@@ -11,9 +11,14 @@ import { User } from '../users/user.entity';
 import admin from '../../config/firebase-admin';
 import {
   DEFAULT_SUBSCRIPTION_PLAN,
+  SUBSCRIPTION_PLANS,
+  USER_ROLES,
+  type SubscriptionPlan,
+  type UserRole,
+} from '../utils/constants';
+import {
   getPlanMemberLimit,
   getSubscriptionPlanFromPriceId,
-  SubscriptionPlan,
 } from './subscription-plan';
 
 const getErrorMessage = (error: unknown) =>
@@ -37,7 +42,7 @@ export class BillingService {
       throw new NotFoundException('User account was not found.');
     }
 
-    if (dbUser.role !== 'owner') {
+    if (dbUser.role !== USER_ROLES.OWNER) {
       throw new ForbiddenException(
         'Only an owner can purchase a subscription.',
       );
@@ -51,13 +56,13 @@ export class BillingService {
 
     const isFamilyToSmallDowngrade =
       dbUser.is_subscribed &&
-      dbUser.subscription_plan === 'family' &&
-      subscriptionPlan === 'small';
+      dbUser.subscription_plan === SUBSCRIPTION_PLANS.FAMILY &&
+      subscriptionPlan === SUBSCRIPTION_PLANS.SMALL;
 
     if (isFamilyToSmallDowngrade) {
-      const smallPlanLimit = getPlanMemberLimit('small');
+      const smallPlanLimit = getPlanMemberLimit(SUBSCRIPTION_PLANS.SMALL);
       const activeMembers = await this.userRepo.count({
-        where: { family_owner_id: dbUser.id, role: 'member' },
+        where: { family_owner_id: dbUser.id, role: USER_ROLES.MEMBER },
       });
 
       if (activeMembers > smallPlanLimit) {
@@ -97,32 +102,32 @@ export class BillingService {
     );
 
     const owner = await this.userRepo.findOne({
-      where: { firebase_uid: firebaseUid, role: 'owner' },
+      where: { firebase_uid: firebaseUid, role: USER_ROLES.OWNER },
     });
 
     if (!owner) return;
 
     await this.syncFirebaseClaims(owner.firebase_uid, {
-      role: 'owner',
+      role: USER_ROLES.OWNER,
       is_subscribed: true,
       subscription_plan: owner.subscription_plan,
     });
 
     const members = await this.userRepo.find({
-      where: { family_owner_id: owner.id, role: 'member' },
+      where: { family_owner_id: owner.id, role: USER_ROLES.MEMBER },
     });
 
     if (!members.length) return;
 
     await this.userRepo.update(
-      { family_owner_id: owner.id, role: 'member' },
+      { family_owner_id: owner.id, role: USER_ROLES.MEMBER },
       { subscription_plan: owner.subscription_plan },
     );
 
     await Promise.all(
       members.map((member) =>
         this.syncFirebaseClaims(member.firebase_uid, {
-          role: 'member',
+          role: USER_ROLES.MEMBER,
           is_subscribed: true,
           subscription_plan: owner.subscription_plan,
         }),
@@ -155,7 +160,9 @@ export class BillingService {
           ? session.subscription
           : (session.subscription?.id ?? null);
       const subscriptionPlan =
-        session.metadata?.subscriptionPlan === 'family' ? 'family' : 'small';
+        session.metadata?.subscriptionPlan === SUBSCRIPTION_PLANS.FAMILY
+          ? SUBSCRIPTION_PLANS.FAMILY
+          : SUBSCRIPTION_PLANS.SMALL;
 
       if (userId) {
         await this.activateSubscription(userId, subscribedId, subscriptionPlan);
@@ -168,7 +175,7 @@ export class BillingService {
   private async syncFirebaseClaims(
     firebaseUid: string,
     claims: Partial<{
-      role: 'owner' | 'member';
+      role: UserRole;
       is_subscribed: boolean;
       subscription_plan: SubscriptionPlan;
     }>,

@@ -4,6 +4,12 @@ import {
   Column,
   CreateDateColumn,
 } from 'typeorm';
+import {
+  SUBSCRIPTION_PLANS,
+  USER_ROLES,
+  type SubscriptionPlan,
+  type UserRole,
+} from '../utils/constants';
 
 @Entity('users')
 export class User {
@@ -22,14 +28,14 @@ export class User {
   @Column({ nullable: true })
   profile_photo_url: string;
 
-  @Column({ default: 'owner' })
-  role: 'owner' | 'member';
+  @Column({ default: USER_ROLES.OWNER })
+  role: UserRole;
 
   @Column({ default: false })
   is_subscribed: boolean;
 
-  @Column({ default: 'small' })
-  subscription_plan: 'small' | 'family';
+  @Column({ default: SUBSCRIPTION_PLANS.SMALL })
+  subscription_plan: SubscriptionPlan;
 
   @Column({ nullable: true })
   subscribed_id: string;

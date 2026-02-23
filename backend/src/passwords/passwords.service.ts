@@ -16,6 +16,7 @@ import { Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { PasswordRecord } from './password.entity';
 import { PermissionsService } from '../permissions/permissions.service';
+import { USER_ROLES } from '../utils/constants';
 
 @Injectable()
 export class PasswordsService {
@@ -122,7 +123,7 @@ export class PasswordsService {
     }
 
     if (
-      requester.role !== 'owner' &&
+      requester.role !== USER_ROLES.OWNER &&
       existing.created_by_user_id !== requester.id
     ) {
       throw new ForbiddenException(
@@ -192,7 +193,7 @@ export class PasswordsService {
     }
 
     if (
-      requester.role !== 'owner' &&
+      requester.role !== USER_ROLES.OWNER &&
       existing.created_by_user_id !== requester.id
     ) {
       throw new ForbiddenException(
@@ -229,8 +230,8 @@ export class PasswordsService {
 
     const familyUsers = await this.userRepo.find({
       where: [
-        { id: familyOwnerId, role: 'owner' },
-        { family_owner_id: familyOwnerId, role: 'member' },
+        { id: familyOwnerId, role: USER_ROLES.OWNER },
+        { family_owner_id: familyOwnerId, role: USER_ROLES.MEMBER },
       ],
       select: ['id'],
     });
@@ -304,7 +305,7 @@ export class PasswordsService {
   }
 
   private getFamilyOwnerId(user: User): string {
-    if (user.role === 'owner') return user.id;
+    if (user.role === USER_ROLES.OWNER) return user.id;
 
     if (!user.family_owner_id) {
       throw new ForbiddenException(

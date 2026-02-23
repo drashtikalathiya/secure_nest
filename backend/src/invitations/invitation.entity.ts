@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { USER_ROLES, type UserRole } from '../utils/constants';
 
 @Entity('invitations')
 export class Invitation {
@@ -11,8 +12,8 @@ export class Invitation {
   @Column()
   email: string;
 
-  @Column({ default: 'member' })
-  role: 'member';
+  @Column({ default: USER_ROLES.MEMBER })
+  role: UserRole;
 
   @Column({ nullable: true })
   permission_profile_id: string;

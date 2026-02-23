@@ -12,6 +12,7 @@ import { Invitation } from '../invitations/invitation.entity';
 import { User } from './user.entity';
 import { CloudinaryService } from './cloudinary.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import { USER_ROLES } from '../utils/constants';
 
 @Injectable()
 export class UsersService {
@@ -40,7 +41,9 @@ export class UsersService {
     }
 
     const familyOwnerId =
-      requester.role === 'owner' ? requester.id : requester.family_owner_id;
+      requester.role === USER_ROLES.OWNER
+        ? requester.id
+        : requester.family_owner_id;
 
     if (!familyOwnerId) {
       return [await this.toMemberResponse(requester)];
@@ -48,15 +51,15 @@ export class UsersService {
 
     const users = await this.userRepo.find({
       where: [
-        { id: familyOwnerId, role: 'owner' },
-        { family_owner_id: familyOwnerId, role: 'member' },
+        { id: familyOwnerId, role: USER_ROLES.OWNER },
+        { family_owner_id: familyOwnerId, role: USER_ROLES.MEMBER },
       ],
       order: { created_at: 'ASC' },
     });
 
     const sorted = users.sort((a, b) => {
       if (a.role === b.role) return 0;
-      return a.role === 'owner' ? -1 : 1;
+      return a.role === USER_ROLES.OWNER ? -1 : 1;
     });
 
     return Promise.all(sorted.map((user) => this.toMemberResponse(user)));
@@ -153,7 +156,7 @@ export class UsersService {
       throw new NotFoundException('User account was not found.');
     }
 
-    if (requester.role !== 'owner') {
+    if (requester.role !== USER_ROLES.OWNER) {
       throw new ForbiddenException('Only an owner can update permissions.');
     }
 
@@ -171,7 +174,7 @@ export class UsersService {
       );
     }
 
-    if (member.role !== 'member') {
+    if (member.role !== USER_ROLES.MEMBER) {
       throw new BadRequestException('Permissions can be updated only for members.');
     }
 
@@ -209,7 +212,7 @@ export class UsersService {
       throw new NotFoundException('User account was not found.');
     }
 
-    if (requester.role !== 'owner') {
+    if (requester.role !== USER_ROLES.OWNER) {
       throw new ForbiddenException('Only an owner can delete members.');
     }
 

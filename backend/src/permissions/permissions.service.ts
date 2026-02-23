@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { PermissionProfile } from './permission-profile.entity';
+import { USER_ROLES } from '../utils/constants';
 import {
   DEFAULT_MEMBER_PERMISSIONS,
   OWNER_PERMISSIONS,
@@ -22,7 +23,7 @@ export class PermissionsService {
   ) {}
 
   async resolveUserPayload(user: Pick<User, 'role' | 'permission_profile_id'>) {
-    if (user.role === 'owner') {
+    if (user.role === USER_ROLES.OWNER) {
       return OWNER_PERMISSIONS;
     }
 
