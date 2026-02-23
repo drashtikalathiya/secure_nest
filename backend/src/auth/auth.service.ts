@@ -18,6 +18,11 @@ import {
   USER_ROLES,
   type SubscriptionPlan,
 } from '../utils/constants';
+import type {
+  AuthResponseDto,
+  FirebaseUserDto,
+  RegisterUserDto,
+} from './dto/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -30,7 +35,7 @@ export class AuthService {
   ) {}
 
   async uploadSignupProfilePhoto(
-    firebaseUser: any,
+    firebaseUser: FirebaseUserDto,
     file?: { buffer: Buffer; mimetype: string; size: number },
   ): Promise<string> {
     this.validateProfilePhoto(file);
@@ -42,7 +47,10 @@ export class AuthService {
     }
 
     try {
-      return await this.cloudinaryService.uploadProfilePhoto(file!, firebaseUid);
+      return await this.cloudinaryService.uploadProfilePhoto(
+        file!,
+        firebaseUid,
+      );
     } catch (error) {
       throw new InternalServerErrorException(
         this.getSafeErrorMessage(error, 'Failed to upload profile photo.'),
@@ -50,7 +58,7 @@ export class AuthService {
     }
   }
 
-  async validateUser(firebaseUser: any): Promise<any> {
+  async validateUser(firebaseUser: FirebaseUserDto): Promise<AuthResponseDto> {
     const { uid } = firebaseUser;
 
     const user = await this.userRepo.findOne({
@@ -66,7 +74,10 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
-  async registerUser(firebaseUser: any, body: any): Promise<any> {
+  async registerUser(
+    firebaseUser: FirebaseUserDto,
+    body: RegisterUserDto,
+  ): Promise<AuthResponseDto> {
     const { uid, email } = firebaseUser;
     const inviteToken = body?.inviteToken?.toString().trim() || null;
     const photoUrl =
@@ -102,7 +113,7 @@ export class AuthService {
     email: string,
     name?: string,
     profilePhotoUrl?: string | null,
-  ): Promise<any> {
+  ): Promise<AuthResponseDto> {
     let user = this.userRepo.create({
       firebase_uid: uid,
       email,
@@ -127,7 +138,7 @@ export class AuthService {
     name: string | undefined,
     inviteToken: string,
     profilePhotoUrl?: string | null,
-  ): Promise<any> {
+  ): Promise<AuthResponseDto> {
     const invite = await this.invitationsService.validateInviteForRegister(
       inviteToken,
       email,
@@ -144,7 +155,10 @@ export class AuthService {
 
     member = await this.userRepo.save(member);
 
-    await this.invitationsService.completeInviteForRegisteredUser(invite, member);
+    await this.invitationsService.completeInviteForRegisteredUser(
+      invite,
+      member,
+    );
 
     const syncedMember = await this.userRepo.findOne({
       where: { id: member.id },
@@ -157,7 +171,7 @@ export class AuthService {
     return this.buildAuthResponse(syncedMember);
   }
 
-  private async buildAuthResponse(user: User) {
+  private async buildAuthResponse(user: User): Promise<AuthResponseDto> {
     const payload = await this.authPayload(user);
     await this.syncFirebaseClaims(
       user,
@@ -167,14 +181,16 @@ export class AuthService {
     return payload;
   }
 
-  private async authPayload(user: User) {
+  private async authPayload(user: User): Promise<AuthResponseDto> {
     const owner = await this.getOwnerForUser(user);
     const isSubscribed =
       user.role === USER_ROLES.OWNER
         ? Boolean(user.is_subscribed)
         : Boolean(owner?.is_subscribed);
     const subscriptionPlan =
-      owner?.subscription_plan || user.subscription_plan || SUBSCRIPTION_PLANS.SMALL;
+      owner?.subscription_plan ||
+      user.subscription_plan ||
+      SUBSCRIPTION_PLANS.SMALL;
 
     if (
       user.role === USER_ROLES.MEMBER &&
@@ -240,18 +256,23 @@ export class AuthService {
         is_subscribed: Boolean(effectiveSubscription),
         subscription_plan: subscriptionPlan,
         ...(user.name && { name: user.name }),
-        ...(user.profile_photo_url && { profile_photo_url: user.profile_photo_url }),
+        ...(user.profile_photo_url && {
+          profile_photo_url: user.profile_photo_url,
+        }),
       };
 
       await admin.auth().setCustomUserClaims(user.firebase_uid, nextClaims);
 
       if (
         (user.name && userRecord.displayName !== user.name) ||
-        (user.profile_photo_url && userRecord.photoURL !== user.profile_photo_url)
+        (user.profile_photo_url &&
+          userRecord.photoURL !== user.profile_photo_url)
       ) {
         await admin.auth().updateUser(user.firebase_uid, {
           ...(user.name ? { displayName: user.name } : {}),
-          ...(user.profile_photo_url ? { photoURL: user.profile_photo_url } : {}),
+          ...(user.profile_photo_url
+            ? { photoURL: user.profile_photo_url }
+            : {}),
         });
       }
     } catch (error) {
@@ -262,9 +283,10 @@ export class AuthService {
     }
   }
 
-  private validateProfilePhoto(
-    file?: { mimetype: string; size: number },
-  ): void {
+  private validateProfilePhoto(file?: {
+    mimetype: string;
+    size: number;
+  }): void {
     if (!file) {
       throw new BadRequestException('Profile photo file is required.');
     }
@@ -285,5 +307,4 @@ export class AuthService {
 
     return fallback;
   }
-
 }

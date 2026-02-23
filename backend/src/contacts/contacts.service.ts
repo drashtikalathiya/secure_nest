@@ -10,6 +10,11 @@ import { User } from '../users/user.entity';
 import { Contact } from './contact.entity';
 import { PermissionsService } from '../permissions/permissions.service';
 import { USER_ROLES } from '../utils/constants';
+import type {
+  ContactListResponseDto,
+  ContactPayloadDto,
+  ContactPermissionsDto,
+} from './dto/contacts.dto';
 
 @Injectable()
 export class ContactsService {
@@ -21,7 +26,7 @@ export class ContactsService {
     private permissionsService: PermissionsService,
   ) {}
 
-  async getContacts(firebaseUid: string) {
+  async getContacts(firebaseUid: string): Promise<ContactListResponseDto> {
     const requester = await this.getRequester(firebaseUid);
     const permissions = await this.permissionsService.getModuleCrudPermissions(
       requester,
@@ -41,7 +46,10 @@ export class ContactsService {
     };
   }
 
-  async createContact(firebaseUid: string, body: any): Promise<Contact> {
+  async createContact(
+    firebaseUid: string,
+    body: ContactPayloadDto,
+  ): Promise<Contact> {
     const requester = await this.getRequester(firebaseUid);
     const permissions = await this.permissionsService.getModuleCrudPermissions(
       requester,
@@ -71,7 +79,7 @@ export class ContactsService {
   async updateContact(
     firebaseUid: string,
     contactId: string,
-    body: any,
+    body: ContactPayloadDto,
   ): Promise<Contact> {
     const requester = await this.getRequester(firebaseUid);
     const permissions = await this.permissionsService.getModuleCrudPermissions(
@@ -167,11 +175,7 @@ export class ContactsService {
     return requester;
   }
 
-  private ensureCanViewContacts(permissions: {
-    view: boolean;
-    edit: boolean;
-    delete: boolean;
-  }): void {
+  private ensureCanViewContacts(permissions: ContactPermissionsDto): void {
     if (!permissions.view) {
       throw new ForbiddenException(
         'You do not have permission to view contacts.',
@@ -179,11 +183,7 @@ export class ContactsService {
     }
   }
 
-  private ensureCanEditContacts(permissions: {
-    view: boolean;
-    edit: boolean;
-    delete: boolean;
-  }): void {
+  private ensureCanEditContacts(permissions: ContactPermissionsDto): void {
     if (!permissions.edit) {
       throw new ForbiddenException(
         'You do not have permission to edit contacts.',
@@ -203,7 +203,7 @@ export class ContactsService {
     return user.family_owner_id;
   }
 
-  private validateContactPayload(body: any): void {
+  private validateContactPayload(body: ContactPayloadDto): void {
     if (!this.clean(body?.name)) {
       throw new BadRequestException('Contact name is required.');
     }
@@ -217,7 +217,7 @@ export class ContactsService {
     }
   }
 
-  private clean(value: any): string | null {
+  private clean(value: unknown): string | null {
     if (typeof value !== 'string') return null;
 
     const trimmed = value.trim();

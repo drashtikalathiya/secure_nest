@@ -13,6 +13,8 @@ import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { getErrorMessage } from '../utils/errorMessage';
 import { sendError, sendSuccess } from '../utils/responseHandler';
 import { ContactsService } from './contacts.service';
+import type { AuthenticatedRequest } from '../auth/dto/auth.dto';
+import type { ContactPayloadDto } from './dto/contacts.dto';
 
 @Controller('contacts')
 @UseGuards(FirebaseAuthGuard)
@@ -20,7 +22,7 @@ export class ContactsController {
   constructor(private contactsService: ContactsService) {}
 
   @Get()
-  async getContacts(@Req() req) {
+  async getContacts(@Req() req: AuthenticatedRequest) {
     try {
       const contacts = await this.contactsService.getContacts(req.user.uid);
       return sendSuccess('Contacts fetched successfully', contacts);
@@ -30,9 +32,15 @@ export class ContactsController {
   }
 
   @Post()
-  async createContact(@Req() req, @Body() body) {
+  async createContact(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: ContactPayloadDto,
+  ) {
     try {
-      const contact = await this.contactsService.createContact(req.user.uid, body);
+      const contact = await this.contactsService.createContact(
+        req.user.uid,
+        body,
+      );
       return sendSuccess('Contact created successfully', contact);
     } catch (error) {
       return sendError('Failed to create contact', getErrorMessage(error));
@@ -40,9 +48,17 @@ export class ContactsController {
   }
 
   @Patch(':id')
-  async updateContact(@Req() req, @Param('id') id: string, @Body() body) {
+  async updateContact(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: ContactPayloadDto,
+  ) {
     try {
-      const contact = await this.contactsService.updateContact(req.user.uid, id, body);
+      const contact = await this.contactsService.updateContact(
+        req.user.uid,
+        id,
+        body,
+      );
       return sendSuccess('Contact updated successfully', contact);
     } catch (error) {
       return sendError('Failed to update contact', getErrorMessage(error));
@@ -50,7 +66,10 @@ export class ContactsController {
   }
 
   @Delete(':id')
-  async deleteContact(@Req() req, @Param('id') id: string) {
+  async deleteContact(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
     try {
       await this.contactsService.deleteContact(req.user.uid, id);
       return sendSuccess('Contact deleted successfully', null);

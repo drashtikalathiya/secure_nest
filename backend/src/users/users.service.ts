@@ -13,6 +13,12 @@ import { User } from './user.entity';
 import { CloudinaryService } from './cloudinary.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { USER_ROLES } from '../utils/constants';
+import type {
+  MemberResponseDto,
+  UpdateMemberPermissionsDto,
+  UpdateMyProfileDto,
+  UserProfilePhotoFile,
+} from './dto/users.dto';
 
 @Injectable()
 export class UsersService {
@@ -31,7 +37,7 @@ export class UsersService {
     });
   }
 
-  async findFamilyMembers(firebaseUid: string): Promise<any[]> {
+  async findFamilyMembers(firebaseUid: string): Promise<MemberResponseDto[]> {
     const requester = await this.userRepo.findOne({
       where: { firebase_uid: firebaseUid },
     });
@@ -67,7 +73,7 @@ export class UsersService {
 
   async uploadMyProfilePhoto(
     firebaseUid: string,
-    file?: { buffer: Buffer; mimetype: string; size: number },
+    file?: UserProfilePhotoFile,
   ): Promise<User> {
     const requester = await this.findByFirebaseUidOrThrow(firebaseUid);
 
@@ -113,7 +119,10 @@ export class UsersService {
     return this.findByIdOrThrow(requester.id);
   }
 
-  async updateMyProfile(firebaseUid: string, body: any): Promise<User> {
+  async updateMyProfile(
+    firebaseUid: string,
+    body: UpdateMyProfileDto,
+  ): Promise<User> {
     const requester = await this.findByFirebaseUidOrThrow(firebaseUid);
 
     const nextName =
@@ -146,8 +155,8 @@ export class UsersService {
   async updateMemberPermissions(
     firebaseUid: string,
     memberId: string,
-    body: any,
-  ): Promise<any> {
+    body: UpdateMemberPermissionsDto,
+  ): Promise<MemberResponseDto> {
     const requester = await this.userRepo.findOne({
       where: { firebase_uid: firebaseUid },
     });
@@ -175,7 +184,9 @@ export class UsersService {
     }
 
     if (member.role !== USER_ROLES.MEMBER) {
-      throw new BadRequestException('Permissions can be updated only for members.');
+      throw new BadRequestException(
+        'Permissions can be updated only for members.',
+      );
     }
 
     const profileId = await this.permissionsService.upsertProfile(
@@ -237,8 +248,12 @@ export class UsersService {
     if (member.firebase_uid) {
       try {
         await admin.auth().deleteUser(member.firebase_uid);
-      } catch (error: any) {
-        if (error?.code !== 'auth/user-not-found') {
+      } catch (error: unknown) {
+        const errorCode =
+          typeof error === 'object' && error !== null && 'code' in error
+            ? (error as { code?: string }).code
+            : undefined;
+        if (errorCode !== 'auth/user-not-found') {
           throw new InternalServerErrorException(
             'Failed to delete member from Firebase.',
           );
@@ -303,9 +318,10 @@ export class UsersService {
     );
   }
 
-  private validateProfilePhoto(
-    file?: { mimetype: string; size: number },
-  ): void {
+  private validateProfilePhoto(file?: {
+    mimetype: string;
+    size: number;
+  }): void {
     if (!file) {
       throw new BadRequestException('Profile photo file is required.');
     }
@@ -327,13 +343,13 @@ export class UsersService {
     return fallback;
   }
 
-  private cleanNullable(value: any): string | null {
+  private cleanNullable(value: unknown): string | null {
     if (typeof value !== 'string') return null;
     const trimmed = value.trim();
     return trimmed || null;
   }
 
-  private requireField(value: any, message: string): string {
+  private requireField(value: unknown, message: string): string {
     const cleaned = this.cleanNullable(value);
     if (!cleaned) {
       throw new BadRequestException(message);
@@ -342,7 +358,7 @@ export class UsersService {
     return cleaned;
   }
 
-  private async toMemberResponse(user: User): Promise<any> {
+  private async toMemberResponse(user: User): Promise<MemberResponseDto> {
     const permissions = await this.permissionsService.resolveUserPayload(user);
 
     return {

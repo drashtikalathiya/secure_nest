@@ -13,6 +13,8 @@ import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { sendError, sendSuccess } from '../utils/responseHandler';
 import { InvitationsService } from './invitations.service';
 import { getErrorMessage } from '../utils/errorMessage';
+import type { AuthenticatedRequest } from '../auth/dto/auth.dto';
+import type { CreateInvitationDto } from './dto/invitations.dto';
 
 @Controller('invitations')
 export class InvitationsController {
@@ -20,7 +22,10 @@ export class InvitationsController {
 
   @UseGuards(FirebaseAuthGuard)
   @Post()
-  async createInvitation(@Req() req, @Body() body) {
+  async createInvitation(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: CreateInvitationDto,
+  ) {
     try {
       const result = await this.invitationsService.createInvitation(
         req.user.uid,
@@ -34,7 +39,7 @@ export class InvitationsController {
 
   @UseGuards(FirebaseAuthGuard)
   @Get('pending')
-  async listPending(@Req() req) {
+  async listPending(@Req() req: AuthenticatedRequest) {
     try {
       const invites = await this.invitationsService.listPendingInvitations(
         req.user.uid,
@@ -47,9 +52,15 @@ export class InvitationsController {
 
   @UseGuards(FirebaseAuthGuard)
   @Post(':id/resend')
-  async resendInvitation(@Req() req, @Param('id') id: string) {
+  async resendInvitation(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
     try {
-      const invite = await this.invitationsService.resendInvitation(req.user.uid, id);
+      const invite = await this.invitationsService.resendInvitation(
+        req.user.uid,
+        id,
+      );
       return sendSuccess('Invitation resent successfully', invite);
     } catch (error) {
       return sendError('Failed to resend invitation', getErrorMessage(error));
@@ -58,7 +69,10 @@ export class InvitationsController {
 
   @UseGuards(FirebaseAuthGuard)
   @Delete(':id')
-  async cancelInvitation(@Req() req, @Param('id') id: string) {
+  async cancelInvitation(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
     try {
       await this.invitationsService.cancelInvitation(req.user.uid, id);
       return sendSuccess('Invitation cancelled successfully');
@@ -79,7 +93,10 @@ export class InvitationsController {
 
   @UseGuards(FirebaseAuthGuard)
   @Post('accept')
-  async acceptInvitation(@Req() req, @Body('token') token: string) {
+  async acceptInvitation(
+    @Req() req: AuthenticatedRequest,
+    @Body('token') token: string,
+  ) {
     try {
       const result = await this.invitationsService.acceptInvitation(
         token,

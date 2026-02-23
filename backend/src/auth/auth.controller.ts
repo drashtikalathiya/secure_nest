@@ -12,6 +12,7 @@ import { FirebaseAuthGuard } from './firebase-auth.guard';
 import { AuthService } from './auth.service';
 import { sendSuccess, sendError } from '../utils/responseHandler';
 import { getErrorMessage } from '../utils/errorMessage';
+import type { AuthenticatedRequest, RegisterUserDto } from './dto/auth.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -19,7 +20,7 @@ export class AuthController {
 
   @UseGuards(FirebaseAuthGuard)
   @Post('login')
-  async login(@Req() req) {
+  async login(@Req() req: AuthenticatedRequest) {
     try {
       const user = await this.authService.validateUser(req.user);
 
@@ -34,7 +35,8 @@ export class AuthController {
         family_owner_id: user.family_owner_id,
         permission_password_access_level: user.permission_password_access_level,
         permission_contacts_access_level: user.permission_contacts_access_level,
-        permission_documents_access_level: user.permission_documents_access_level,
+        permission_documents_access_level:
+          user.permission_documents_access_level,
         permission_invite_others: user.permission_invite_others,
         permission_export_data: user.permission_export_data,
       });
@@ -45,7 +47,10 @@ export class AuthController {
 
   @UseGuards(FirebaseAuthGuard)
   @Post('register')
-  async register(@Req() req, @Body() body) {
+  async register(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: RegisterUserDto,
+  ) {
     try {
       const user = await this.authService.registerUser(req.user, body);
 
@@ -60,7 +65,8 @@ export class AuthController {
         family_owner_id: user.family_owner_id,
         permission_password_access_level: user.permission_password_access_level,
         permission_contacts_access_level: user.permission_contacts_access_level,
-        permission_documents_access_level: user.permission_documents_access_level,
+        permission_documents_access_level:
+          user.permission_documents_access_level,
         permission_invite_others: user.permission_invite_others,
         permission_export_data: user.permission_export_data,
       });
@@ -73,7 +79,7 @@ export class AuthController {
   @Post('profile-photo')
   @UseInterceptors(FileInterceptor('file'))
   async uploadProfilePhoto(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @UploadedFile() file: { buffer: Buffer; mimetype: string; size: number },
   ) {
     try {
@@ -85,7 +91,10 @@ export class AuthController {
         profile_photo_url,
       });
     } catch (error) {
-      return sendError('Failed to upload profile photo', getErrorMessage(error));
+      return sendError(
+        'Failed to upload profile photo',
+        getErrorMessage(error),
+      );
     }
   }
 }

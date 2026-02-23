@@ -14,9 +14,7 @@ import { Invitation } from './invitation.entity';
 import { User } from '../users/user.entity';
 import { getErrorMessage } from '../utils/errorMessage';
 import { renderInvitationEmailHtml } from '../utils/emailTemplates';
-import {
-  getPlanMemberLimit,
-} from '../billing/subscription-plan';
+import { getPlanMemberLimit } from '../billing/subscription-plan';
 import { DEFAULT_MEMBER_PERMISSIONS } from '../permissions/permissions.utils';
 import { PermissionsService } from '../permissions/permissions.service';
 import {
@@ -25,6 +23,7 @@ import {
   type SubscriptionPlan,
   type UserRole,
 } from '../utils/constants';
+import type { CreateInvitationDto } from './dto/invitations.dto';
 
 const INVITE_EXPIRY_DAYS = 7;
 
@@ -38,7 +37,7 @@ export class InvitationsService {
     private permissionsService: PermissionsService,
   ) {}
 
-  async createInvitation(firebaseUid: string, body: any) {
+  async createInvitation(firebaseUid: string, body: CreateInvitationDto) {
     const owner = await this.getOwnerByFirebaseUid(
       firebaseUid,
       'Only an owner can send invitations.',

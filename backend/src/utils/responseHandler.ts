@@ -1,10 +1,10 @@
-export const sendSuccess = (message: string, data: any = null) => ({
+export const sendSuccess = <T>(message: string, data: T | null = null) => ({
   success: true,
   message,
   data,
 });
 
-export const sendError = (message: string, error: any = null) => ({
+export const sendError = <T>(message: string, error: T | null = null) => ({
   success: false,
   message,
   error,

@@ -17,6 +17,13 @@ import { User } from '../users/user.entity';
 import { PasswordRecord } from './password.entity';
 import { PermissionsService } from '../permissions/permissions.service';
 import { USER_ROLES } from '../utils/constants';
+import type {
+  CreatePasswordDto,
+  PasswordListResponseDto,
+  PasswordPermissionsDto,
+  PasswordVisibility,
+  UpdatePasswordDto,
+} from './dto/passwords.dto';
 
 @Injectable()
 export class PasswordsService {
@@ -31,7 +38,7 @@ export class PasswordsService {
     private permissionsService: PermissionsService,
   ) {}
 
-  async getPasswords(firebaseUid: string) {
+  async getPasswords(firebaseUid: string): Promise<PasswordListResponseDto> {
     const requester = await this.getRequester(firebaseUid);
     const permissions = await this.permissionsService.getModuleCrudPermissions(
       requester,
@@ -58,7 +65,7 @@ export class PasswordsService {
 
   async createPassword(
     firebaseUid: string,
-    body: any,
+    body: CreatePasswordDto,
   ): Promise<PasswordRecord> {
     const requester = await this.getRequester(firebaseUid);
     const permissions = await this.permissionsService.getModuleCrudPermissions(
@@ -104,7 +111,7 @@ export class PasswordsService {
   async updatePassword(
     firebaseUid: string,
     passwordId: string,
-    body: any,
+    body: UpdatePasswordDto,
   ): Promise<PasswordRecord> {
     const requester = await this.getRequester(firebaseUid);
     const permissions = await this.permissionsService.getModuleCrudPermissions(
@@ -205,8 +212,8 @@ export class PasswordsService {
   }
 
   private async resolveSharedUsers(
-    input: any,
-    visibility: 'private' | 'family' | 'specific',
+    input: unknown,
+    visibility: PasswordVisibility,
     familyOwnerId: string,
     requesterId: string,
   ): Promise<string[]> {
@@ -260,7 +267,7 @@ export class PasswordsService {
     return false;
   }
 
-  private getVisibility(value: any): 'private' | 'family' | 'specific' {
+  private getVisibility(value: unknown): PasswordVisibility {
     if (value === 'private' || value === 'specific') {
       return value;
     }
@@ -280,11 +287,7 @@ export class PasswordsService {
     return requester;
   }
 
-  private ensureCanViewPasswords(permissions: {
-    view: boolean;
-    edit: boolean;
-    delete: boolean;
-  }): void {
+  private ensureCanViewPasswords(permissions: PasswordPermissionsDto): void {
     if (!permissions.view) {
       throw new ForbiddenException(
         'You do not have permission to view passwords.',
@@ -292,11 +295,7 @@ export class PasswordsService {
     }
   }
 
-  private ensureCanEditPasswords(permissions: {
-    view: boolean;
-    edit: boolean;
-    delete: boolean;
-  }): void {
+  private ensureCanEditPasswords(permissions: PasswordPermissionsDto): void {
     if (!permissions.edit) {
       throw new ForbiddenException(
         'You do not have permission to edit passwords.',
@@ -316,14 +315,14 @@ export class PasswordsService {
     return user.family_owner_id;
   }
 
-  private clean(value: any): string | null {
+  private clean(value: unknown): string | null {
     if (typeof value !== 'string') return null;
 
     const trimmed = value.trim();
     return trimmed || null;
   }
 
-  private requireField(value: any, message: string): string {
+  private requireField(value: unknown, message: string): string {
     const cleaned = this.clean(value);
     if (!cleaned) {
       throw new BadRequestException(message);

@@ -1,4 +1,5 @@
 import { AccessLevel, PermissionProfile } from './permission-profile.entity';
+import type { PermissionPayloadInput } from './dto/permissions.dto';
 
 export type PermissionPayload = {
   passwordAccess: AccessLevel;
@@ -40,12 +41,18 @@ export function resolveAccessLevel(
 }
 
 export function normalizePermissionPayload(
-  input: any,
+  input: PermissionPayloadInput | null | undefined,
   fallback: PermissionPayload = DEFAULT_MEMBER_PERMISSIONS,
 ): PermissionPayload {
   return {
-    passwordAccess: resolveAccessLevel(input?.passwordAccess, fallback.passwordAccess),
-    contactsAccess: resolveAccessLevel(input?.contactsAccess, fallback.contactsAccess),
+    passwordAccess: resolveAccessLevel(
+      input?.passwordAccess,
+      fallback.passwordAccess,
+    ),
+    contactsAccess: resolveAccessLevel(
+      input?.contactsAccess,
+      fallback.contactsAccess,
+    ),
     documentsAccess: resolveAccessLevel(
       input?.documentsAccess,
       fallback.documentsAccess,
@@ -97,4 +104,3 @@ export function payloadToProfileFields(payload: PermissionPayload) {
     export_data: payload.exportData,
   };
 }
-

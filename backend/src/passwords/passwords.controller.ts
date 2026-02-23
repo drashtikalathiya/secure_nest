@@ -13,6 +13,8 @@ import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { getErrorMessage } from '../utils/errorMessage';
 import { sendError, sendSuccess } from '../utils/responseHandler';
 import { PasswordsService } from './passwords.service';
+import type { AuthenticatedRequest } from '../auth/dto/auth.dto';
+import type { CreatePasswordDto, UpdatePasswordDto } from './dto/passwords.dto';
 
 @Controller('passwords')
 @UseGuards(FirebaseAuthGuard)
@@ -20,7 +22,7 @@ export class PasswordsController {
   constructor(private passwordsService: PasswordsService) {}
 
   @Get()
-  async getPasswords(@Req() req) {
+  async getPasswords(@Req() req: AuthenticatedRequest) {
     try {
       const passwords = await this.passwordsService.getPasswords(req.user.uid);
       return sendSuccess('Passwords fetched successfully', passwords);
@@ -30,7 +32,10 @@ export class PasswordsController {
   }
 
   @Post()
-  async createPassword(@Req() req, @Body() body) {
+  async createPassword(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: CreatePasswordDto,
+  ) {
     try {
       const created = await this.passwordsService.createPassword(
         req.user.uid,
@@ -43,7 +48,11 @@ export class PasswordsController {
   }
 
   @Patch(':id')
-  async updatePassword(@Req() req, @Param('id') id: string, @Body() body) {
+  async updatePassword(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() body: UpdatePasswordDto,
+  ) {
     try {
       const updated = await this.passwordsService.updatePassword(
         req.user.uid,
@@ -57,7 +66,10 @@ export class PasswordsController {
   }
 
   @Delete(':id')
-  async deletePassword(@Req() req, @Param('id') id: string) {
+  async deletePassword(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
     try {
       await this.passwordsService.deletePassword(req.user.uid, id);
       return sendSuccess('Password deleted successfully', null);

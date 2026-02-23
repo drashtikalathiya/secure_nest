@@ -4,6 +4,10 @@ import { Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { PermissionProfile } from './permission-profile.entity';
 import { USER_ROLES } from '../utils/constants';
+import type {
+  PermissionModule,
+  PermissionPayloadInput,
+} from './dto/permissions.dto';
 import {
   DEFAULT_MEMBER_PERMISSIONS,
   OWNER_PERMISSIONS,
@@ -12,8 +16,6 @@ import {
   payloadToProfileFields,
   profileToPayload,
 } from './permissions.utils';
-
-type PermissionModule = 'passwords' | 'contacts' | 'documents';
 
 @Injectable()
 export class PermissionsService {
@@ -47,7 +49,7 @@ export class PermissionsService {
 
   async createProfile(
     ownerId: string,
-    input: any,
+    input: PermissionPayloadInput,
     fallback: PermissionPayload = DEFAULT_MEMBER_PERMISSIONS,
   ): Promise<string> {
     const payload = normalizePermissionPayload(input, fallback);
@@ -64,7 +66,7 @@ export class PermissionsService {
   async upsertProfile(
     ownerId: string,
     profileId: string | null | undefined,
-    input: any,
+    input: PermissionPayloadInput,
     fallback: PermissionPayload = DEFAULT_MEMBER_PERMISSIONS,
   ): Promise<string> {
     const existing = profileId
