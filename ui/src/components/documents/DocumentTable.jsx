@@ -103,7 +103,7 @@ export default function DocumentTable({
   return (
     <div className="overflow-hidden rounded-xl border border-slate-800/80">
       <div
-        className={`grid ${columns} border-b border-slate-800/80 bg-slate-900/40 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500`}
+        className={`grid ${columns} border-b border-slate-800/80 bg-[#17253f] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500`}
       >
         {headerLabels.map((label) => (
           <span key={label}>{label}</span>

@@ -1,4 +1,5 @@
 import {
+  IconKey,
   IconLayoutGrid,
   IconPlus,
   IconSearch,
@@ -7,6 +8,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import ConfirmModal from "../components/common/ConfirmModal";
+import EmptyState from "../components/common/EmptyState";
 import PageHeader from "../components/common/PageHeader";
 import PasswordFormDrawer from "../components/password/PasswordFormDrawer";
 import PasswordItem from "../components/password/PasswordItem";
@@ -380,45 +382,59 @@ export default function Passwords() {
                     );
                   })
                 ) : (
-                  <div className="rounded-xl border border-slate-800/70 bg-slate-900/40 px-4 py-10 text-center text-sm text-slate-500">
-                    No passwords found.
-                  </div>
+                  <EmptyState
+                    icon={IconKey}
+                    title="No passwords found"
+                    description="Save logins, secure notes, and credentials for your family. Everything stays end-to-end encrypted."
+                    actionLabel="Add Password"
+                    onAction={() => setIsAddOpen(true)}
+                  />
                 )}
               </div>
 
               <div className="space-y-4 lg:hidden">
-                {filteredCards.map((item) => {
-                  const rowKey = getRowKey(item);
-                  return (
-                    <PasswordItem
-                      key={rowKey}
-                      item={item}
-                      revealed={revealed}
-                      setRevealed={setRevealed}
-                      handleCopy={handleCopy}
-                      isFavorite={Boolean(favoriteKeys[rowKey])}
-                      onToggleFavorite={() => toggleFavorite(rowKey)}
-                      canEdit={
-                        canEditPasswords &&
-                        modulePermissions.edit &&
-                        item.createdByUserId === currentUserId
-                      }
-                      canDelete={
-                        canEditPasswords &&
-                        modulePermissions.delete &&
-                        item.createdByUserId === currentUserId
-                      }
-                      onEdit={() => handleEditPassword(item)}
-                      onDelete={() =>
-                        setDeleteTarget({
-                          id: item.id,
-                          name: item.name,
-                        })
-                      }
-                      variant="card"
-                    />
-                  );
-                })}
+                {filteredCards.length > 0 ? (
+                  filteredCards.map((item) => {
+                    const rowKey = getRowKey(item);
+                    return (
+                      <PasswordItem
+                        key={rowKey}
+                        item={item}
+                        revealed={revealed}
+                        setRevealed={setRevealed}
+                        handleCopy={handleCopy}
+                        isFavorite={Boolean(favoriteKeys[rowKey])}
+                        onToggleFavorite={() => toggleFavorite(rowKey)}
+                        canEdit={
+                          canEditPasswords &&
+                          modulePermissions.edit &&
+                          item.createdByUserId === currentUserId
+                        }
+                        canDelete={
+                          canEditPasswords &&
+                          modulePermissions.delete &&
+                          item.createdByUserId === currentUserId
+                        }
+                        onEdit={() => handleEditPassword(item)}
+                        onDelete={() =>
+                          setDeleteTarget({
+                            id: item.id,
+                            name: item.name,
+                          })
+                        }
+                        variant="card"
+                      />
+                    );
+                  })
+                ) : (
+                  <EmptyState
+                    icon={IconKey}
+                    title="No passwords found"
+                    description="Save logins, secure notes, and credentials for your family. Everything stays end-to-end encrypted."
+                    actionLabel="Add Password"
+                    onAction={() => setIsAddOpen(true)}
+                  />
+                )}
               </div>
             </>
           )}

@@ -1,7 +1,8 @@
-import { IconPlus, IconSearch } from "@tabler/icons-react";
+import { IconPlus, IconSearch, IconUsers } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import ConfirmModal from "../components/common/ConfirmModal";
+import EmptyState from "../components/common/EmptyState";
 import PageHeader from "../components/common/PageHeader";
 import ContactCard from "../components/contacts/ContactCard";
 import ContactFormModal from "../components/contacts/ContactFormModal";
@@ -270,9 +271,14 @@ export default function Contacts() {
             />
           ))}
           {!isLoading && filteredContacts.length === 0 ? (
-            <div className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-5 text-sm text-slate-500 md:col-span-3 xl:col-span-4 px-4 py-10 text-center">
-              No contacts found.
-            </div>
+            <EmptyState
+              icon={IconUsers}
+              title="No contacts found"
+              description="Store family contacts, emergency numbers, and trusted advisors in one secure place."
+              actionLabel="Add Contact"
+              onAction={() => setIsFormOpen(true)}
+              className="md:col-span-3 xl:col-span-4"
+            />
           ) : null}
         </div>
       </div>

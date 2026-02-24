@@ -1,5 +1,7 @@
 import {
   IconArrowLeft,
+  IconFileDescription,
+  IconFolder,
   IconLayoutGrid,
   IconList,
   IconPlus,
@@ -8,6 +10,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import ConfirmModal from "../components/common/ConfirmModal";
+import EmptyState from "../components/common/EmptyState";
 import AddDocumentSlider from "../components/documents/AddDocumentSlider";
 import CreateFolderModal from "../components/documents/CreateFolderModal";
 import DocumentGridCard from "../components/documents/DocumentGridCard";
@@ -138,10 +141,7 @@ export default function Documents() {
     const url = file?.fileUrl || file?.previewUrl || "";
     if (!url) return;
 
-    const ok = await downloadFile(
-      url,
-      file?.name || file?.title || "document",
-    );
+    const ok = await downloadFile(url, file?.name || file?.title || "document");
     if (!ok) {
       toast.error("Unable to download. Opening in a new tab.");
     }
@@ -712,9 +712,16 @@ export default function Documents() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-6 text-sm text-slate-400">
-                No folders yet. Create your first folder to get started.
-              </div>
+              <EmptyState
+                icon={IconFolder}
+                title="No folders yet"
+                description="Organize family files into folders so they are easy to find and share."
+                actionLabel="Create Folder"
+                onAction={() => {
+                  setEditFolderTarget(null);
+                  setCreateFolderOpen(true);
+                }}
+              />
             )}
           </div>
 
@@ -762,8 +769,8 @@ export default function Documents() {
                     key={file.id}
                     file={file}
                     onPreview={handleOpenPreview}
-                  onDownloadClick={() => handleDownloadDocument(file)}
-                  canDownload={canExportDocuments}
+                    onDownloadClick={() => handleDownloadDocument(file)}
+                    canDownload={canExportDocuments}
                     onEditClick={
                       canEditDocuments && canManageFile(file)
                         ? () => handleOpenEditDocument(file, file.folderId)
