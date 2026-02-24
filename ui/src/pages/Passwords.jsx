@@ -14,7 +14,7 @@ import { useAuth } from "../context/AuthContext";
 import {
   PASSWORD_CATEGORY_ICONS,
   PASSWORD_CATEGORY_OPTIONS,
-} from "../const/passwordsData";
+} from "../constants/passwordsData";
 import { getFamilyMembers } from "../services/usersApi";
 import {
   createPassword,
@@ -22,7 +22,7 @@ import {
   getPasswords,
   updatePassword,
 } from "../services/passwordsApi";
-import { PAGE_META } from "../const/pageMeta";
+import { PAGE_META } from "../constants/pageMeta";
 
 const getRowKey = (item) => item.id || `${item.name}-${item.value}`;
 

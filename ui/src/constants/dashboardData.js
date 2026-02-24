@@ -1,7 +1,6 @@
 import {
   IconKey,
   IconFileText,
-  IconCreditCard,
   IconUsersGroup,
   IconAddressBook,
 } from "@tabler/icons-react";

@@ -1,26 +1,25 @@
 import {
   IconDownload,
+  IconFileDescription,
   IconLock,
   IconPencil,
   IconTrash,
   IconUsersGroup,
 } from "@tabler/icons-react";
+import { FILE_TYPE_CONFIG } from "../../constants/documentsData";
+import { formatSize, getDocumentLabel } from "../../utils/documentUtils";
 
-function formatSize(sizeMb) {
-  if (sizeMb >= 1024) return `${(sizeMb / 1024).toFixed(2)} GB`;
-  return `${(sizeMb || 0).toFixed(1)} MB`;
-}
-
-function getFileBadgeClass(fileType) {
-  if (fileType === "IMAGE") return "bg-sky-500/25 text-sky-200";
-  if (fileType === "DOCX" || fileType === "DOC") {
-    return "bg-violet-500/20 text-violet-200";
-  }
-  return "bg-rose-500/20 text-rose-200";
-}
-
-function getDocumentLabel(file) {
-  return file?.title || file.name;
+function getPreviewMeta(fileType = "") {
+  const normalized = fileType.toUpperCase();
+  return (
+    FILE_TYPE_CONFIG[normalized] || {
+      kind: "file",
+      label: normalized || "FILE",
+      icon: IconFileDescription,
+      iconClassName: "text-slate-200",
+      glowClassName: "bg-slate-500/10",
+    }
+  );
 }
 
 function getOwnerInitials(value = "") {
@@ -38,6 +37,7 @@ export default function DocumentGridCard({
   onDownloadClick,
   onEditClick,
   onDeleteClick,
+  onPreview,
 }) {
   const visibility = file?.visibility || "family";
   const isPrivate = visibility === "private";
@@ -48,23 +48,61 @@ export default function DocumentGridCard({
   const sharedNames = sharedProfiles
     .map((profile) => profile.name)
     .filter(Boolean);
+  const previewMeta = getPreviewMeta(file?.fileType || "");
+  const previewUrl = file?.previewUrl || "";
+  const showImagePreview = previewMeta.kind === "image" && Boolean(previewUrl);
+
+  const handlePreview = () => {
+    onPreview?.(file);
+  };
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-800/80 bg-dashboard-card shadow-[0_18px_40px_-28px_rgba(15,23,42,0.8)]">
+    <article
+      onClick={handlePreview}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          handlePreview();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      className="cursor-pointer overflow-hidden rounded-2xl border border-slate-800/80 bg-dashboard-card shadow-[0_18px_40px_-28px_rgba(15,23,42,0.8)]"
+    >
       <div className="relative flex h-36 items-center justify-center border-b border-slate-800/80 bg-slate-900/60">
-        <span
-          className={`rounded px-2.5 py-1 text-[11px] font-bold ${getFileBadgeClass(file.fileType)}`}
-        >
-          {file.fileType}
-        </span>
+        <div className="absolute inset-0">
+          {showImagePreview ? (
+            <>
+              <img
+                src={previewUrl}
+                alt={getDocumentLabel(file)}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/20 to-transparent" />
+            </>
+          ) : (
+            <>
+              <div className="absolute inset-0 bg-slate-950/40" />
+              <div
+                className={`absolute -inset-6 blur-3xl ${previewMeta.glowClassName}`}
+              />
+            </>
+          )}
+        </div>
+        {!showImagePreview ? (
+          <div className="relative z-10 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-900/60 backdrop-blur">
+            {previewMeta.icon ? (
+              <previewMeta.icon
+                size={36}
+                className={previewMeta.iconClassName}
+              />
+            ) : null}
+          </div>
+        ) : null}
         {file.category ? (
           <span className="absolute left-3 top-3 rounded-full border border-slate-700/70 bg-slate-950/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-300">
             {file.category}
-          </span>
-        ) : null}
-        {isPrivate ? (
-          <span className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700/70 bg-slate-950/70 text-slate-300">
-            <IconLock size={14} />
           </span>
         ) : null}
       </div>
@@ -124,7 +162,10 @@ export default function DocumentGridCard({
             {onEditClick ? (
               <button
                 type="button"
-                onClick={onEditClick}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEditClick();
+                }}
                 className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-200"
                 aria-label="Edit document"
               >
@@ -134,8 +175,11 @@ export default function DocumentGridCard({
             {onDeleteClick ? (
               <button
                 type="button"
-                onClick={onDeleteClick}
-                className="rounded p-1 text-rose-400 hover:bg-rose-500/15 hover:text-rose-300"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDeleteClick();
+                }}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-rose-300"
                 aria-label="Delete document"
               >
                 <IconTrash size={18} />
@@ -143,7 +187,10 @@ export default function DocumentGridCard({
             ) : null}
             <button
               type="button"
-              onClick={onDownloadClick}
+              onClick={(event) => {
+                event.stopPropagation();
+                onDownloadClick?.();
+              }}
               className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-200"
               aria-label="Download document"
             >

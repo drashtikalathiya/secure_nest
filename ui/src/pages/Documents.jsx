@@ -11,12 +11,19 @@ import ConfirmModal from "../components/common/ConfirmModal";
 import AddDocumentSlider from "../components/documents/AddDocumentSlider";
 import CreateFolderModal from "../components/documents/CreateFolderModal";
 import DocumentGridCard from "../components/documents/DocumentGridCard";
+import DocumentPreviewModal from "../components/documents/DocumentPreviewModal";
 import DocumentTable from "../components/documents/DocumentTable";
 import FolderCard from "../components/documents/FolderCard";
 import PageHeader from "../components/common/PageHeader";
-import { PAGE_META } from "../const/pageMeta";
+import { PAGE_META } from "../constants/pageMeta";
 import { useAuth } from "../context/AuthContext";
 import { getFamilyMembers } from "../services/usersApi";
+import {
+  downloadFile,
+  formatUploadedAt,
+  getDocumentLabel,
+  getFolderTotals,
+} from "../utils/documentUtils";
 import {
   createDocument,
   createFolder,
@@ -27,35 +34,15 @@ import {
   updateDocument,
 } from "../services/documentsApi";
 
-function getFolderTotals(files) {
-  const totalSize = files.reduce((sum, file) => sum + (file.sizeMb || 0), 0);
-  return {
-    fileCount: files.length,
-    totalSize,
-  };
-}
-
-function getDocumentLabel(file) {
-  return file?.name || file?.title || "Untitled Document";
-}
-
-function formatUploadedAt(value) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  });
-}
-
 function mapDocumentFile(file, memberMap = new Map()) {
+  const fileUrl = file.file_url || file.url || "";
   return {
     id: file.id,
     name: file.file_name || "",
     title: file.title || file.file_name || "Untitled Document",
     fileType: file.file_type || "FILE",
+    previewUrl: file.preview_url || file.thumbnail_url || fileUrl,
+    fileUrl,
     category: file.category || "",
     uploadedAt: formatUploadedAt(file.created_at),
     sizeMb: typeof file.size_mb === "number" ? file.size_mb : 0,
@@ -109,6 +96,7 @@ export default function Documents() {
     delete: false,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [showAllFolders, setShowAllFolders] = useState(false);
 
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [deleteFolderTarget, setDeleteFolderTarget] = useState(null);
@@ -121,6 +109,7 @@ export default function Documents() {
   const [editDocumentTarget, setEditDocumentTarget] = useState(null);
   const [deleteDocumentTarget, setDeleteDocumentTarget] = useState(null);
   const [isDocumentSubmitting, setIsDocumentSubmitting] = useState(false);
+  const [previewTarget, setPreviewTarget] = useState(null);
 
   const pageTitle = PAGE_META["/documents"];
   const canEditDocuments = Boolean(modulePermissions.edit);
@@ -131,6 +120,31 @@ export default function Documents() {
   );
 
   const recentFiles = useMemo(() => toRecentFileItems(folders), [folders]);
+  const visibleFolders = useMemo(
+    () => (showAllFolders ? folders : folders.slice(0, 4)),
+    [folders, showAllFolders],
+  );
+
+  const handleOpenPreview = (file) => {
+    setPreviewTarget(file || null);
+  };
+
+  const handleClosePreview = () => {
+    setPreviewTarget(null);
+  };
+
+  const handleDownloadDocument = async (file) => {
+    const url = file?.fileUrl || file?.previewUrl || "";
+    if (!url) return;
+
+    const ok = await downloadFile(
+      url,
+      file?.name || file?.title || "document",
+    );
+    if (!ok) {
+      toast.error("Unable to download. Opening in a new tab.");
+    }
+  };
 
   const loadDocuments = useCallback(async () => {
     setIsLoading(true);
@@ -471,10 +485,12 @@ export default function Documents() {
 
   const sliderOpen = uploadSliderOpen || Boolean(editDocumentTarget);
 
+  let pageContent = null;
+
   if (selectedFolder) {
     const totals = getFolderTotals(selectedFolder.files);
 
-    return (
+    pageContent = (
       <section className="pb-6">
         <div className="mt-6">
           <div className="">
@@ -543,6 +559,8 @@ export default function Documents() {
                 <DocumentGridCard
                   key={file.id}
                   file={file}
+                  onPreview={handleOpenPreview}
+                  onDownloadClick={() => handleDownloadDocument(file)}
                   onEditClick={
                     canEditDocuments && canManageFile(file)
                       ? () => handleOpenEditDocument(file, selectedFolder.id)
@@ -560,7 +578,7 @@ export default function Documents() {
                 <button
                   type="button"
                   onClick={() => setUploadSliderOpen(true)}
-                  className="flex h-[230px] flex-col items-center justify-center rounded-2xl border border-dashed border-sky-500/40 bg-sky-500/5 text-sky-200 transition hover:bg-sky-500/10"
+                  className="flex h-[250px] flex-col items-center justify-center rounded-2xl border border-dashed border-sky-500/40 bg-sky-500/5 text-sky-200 transition hover:bg-sky-500/10"
                 >
                   <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-700 text-sky-200">
                     <IconPlus size={16} />
@@ -576,6 +594,7 @@ export default function Documents() {
               <DocumentTable
                 files={selectedFolder.files}
                 variant="folder"
+                onPreview={handleOpenPreview}
                 onEditClick={
                   canEditDocuments
                     ? (file) => handleOpenEditDocument(file, selectedFolder.id)
@@ -622,206 +641,224 @@ export default function Documents() {
         />
       </section>
     );
+  } else {
+    pageContent = (
+      <section className="pb-6">
+        <PageHeader
+          title={pageTitle.title}
+          subtitle={pageTitle.subtitle}
+          right={
+            canEditDocuments ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditFolderTarget(null);
+                    setCreateFolderOpen(true);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-800"
+                >
+                  <IconPlus size={15} />
+                  New Folder
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUploadSliderOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary-strong px-4 py-2 text-xs font-semibold text-white"
+                >
+                  <IconUpload size={15} />
+                  Add New Document
+                </button>
+              </div>
+            ) : null
+          }
+        />
+
+        <div className="space-y-6">
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Categories</h2>
+              {folders.length > 4 ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAllFolders((prev) => !prev)}
+                  className="text-xs font-semibold text-sky-300 hover:text-sky-200"
+                >
+                  {showAllFolders ? "Show Less" : "View All"}
+                </button>
+              ) : null}
+            </div>
+            {isLoading ? (
+              <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-6 text-sm text-slate-400">
+                Loading folders...
+              </div>
+            ) : folders.length ? (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {visibleFolders.map((folder) => (
+                  <FolderCard
+                    key={folder.id}
+                    folder={folder}
+                    canEdit={canEditDocuments}
+                    currentUserId={currentUserId}
+                    onSelect={(folderId) => setSelectedFolderId(folderId)}
+                    onEdit={(selected) => {
+                      setEditFolderTarget(selected);
+                      setCreateFolderOpen(true);
+                    }}
+                    onDelete={(selected) => setDeleteFolderTarget(selected)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-6 text-sm text-slate-400">
+                No folders yet. Create your first folder to get started.
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">
+                Recent Documents
+              </h2>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setRecentView("grid")}
+                  className={`rounded p-1.5 ${
+                    recentView === "grid"
+                      ? "bg-sky-500/20 text-sky-200"
+                      : "text-slate-400 hover:bg-slate-800"
+                  }`}
+                  aria-label="Grid view"
+                >
+                  <IconLayoutGrid size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRecentView("list")}
+                  className={`rounded p-1.5 ${
+                    recentView === "list"
+                      ? "bg-sky-500/20 text-sky-200"
+                      : "text-slate-400 hover:bg-slate-800"
+                  }`}
+                  aria-label="List view"
+                >
+                  <IconList size={15} />
+                </button>
+              </div>
+            </div>
+
+            {!isLoading && recentFiles.length === 0 ? (
+              <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-6 text-sm text-slate-400">
+                No recent documents yet.
+              </div>
+            ) : recentView === "grid" ? (
+              <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                {recentFiles.map((file) => (
+                  <DocumentGridCard
+                    key={file.id}
+                    file={file}
+                    onPreview={handleOpenPreview}
+                    onDownloadClick={() => handleDownloadDocument(file)}
+                    onEditClick={
+                      canEditDocuments && canManageFile(file)
+                        ? () => handleOpenEditDocument(file, file.folderId)
+                        : null
+                    }
+                    onDeleteClick={
+                      canEditDocuments && canManageFile(file)
+                        ? () => openDeleteDocument(file, file.folderId)
+                        : null
+                    }
+                  />
+                ))}
+              </div>
+            ) : (
+              <DocumentTable
+                files={recentFiles}
+                variant="recent"
+                onPreview={handleOpenPreview}
+                onEditClick={
+                  canEditDocuments
+                    ? (file) => handleOpenEditDocument(file, file.folderId)
+                    : null
+                }
+                onDeleteClick={
+                  canEditDocuments
+                    ? (file) => openDeleteDocument(file, file.folderId)
+                    : null
+                }
+                canManageFile={canManageFile}
+              />
+            )}
+          </div>
+        </div>
+
+        <CreateFolderModal
+          open={createFolderOpen}
+          onClose={() => {
+            setCreateFolderOpen(false);
+            setEditFolderTarget(null);
+          }}
+          onCreate={handleCreateFolder}
+          onUpdate={handleUpdateFolder}
+          mode={editFolderTarget ? "edit" : "create"}
+          initialFolder={editFolderTarget}
+        />
+
+        <ConfirmModal
+          open={Boolean(deleteFolderTarget)}
+          title="Delete Folder?"
+          message={`This will remove "${
+            deleteFolderTarget?.name || "this folder"
+          }" and all documents inside it.`}
+          confirmLabel="Delete Folder"
+          onConfirm={handleDeleteFolder}
+          onCancel={() => setDeleteFolderTarget(null)}
+        />
+
+        <AddDocumentSlider
+          open={sliderOpen}
+          onClose={() => {
+            setUploadSliderOpen(false);
+            setEditDocumentTarget(null);
+          }}
+          folderOptions={folders.map((folder) => ({
+            id: folder.id,
+            name: folder.name,
+          }))}
+          defaultFolderId={editDocumentTarget?.folderId}
+          onUpload={handleUploadDocument}
+          onUpdate={handleUpdateDocument}
+          isSubmitting={isDocumentSubmitting}
+          mode={editDocumentTarget ? "edit" : "create"}
+          initialDocument={editDocumentTarget?.file || null}
+        />
+
+        <ConfirmModal
+          open={Boolean(deleteDocumentTarget)}
+          title="Delete Document?"
+          message={`This will permanently remove "${
+            deleteDocumentTarget?.name || "this document"
+          }".`}
+          confirmLabel="Delete Document"
+          onConfirm={handleDeleteDocument}
+          onCancel={() => setDeleteDocumentTarget(null)}
+        />
+      </section>
+    );
   }
 
   return (
-    <section className="pb-6">
-      <PageHeader
-        title={pageTitle.title}
-        subtitle={pageTitle.subtitle}
-        right={
-          canEditDocuments ? (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setEditFolderTarget(null);
-                  setCreateFolderOpen(true);
-                }}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-800"
-              >
-                <IconPlus size={15} />
-                New Folder
-              </button>
-              <button
-                type="button"
-                onClick={() => setUploadSliderOpen(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-primary-strong px-4 py-2 text-xs font-semibold text-white"
-              >
-                <IconUpload size={15} />
-                Add New Document
-              </button>
-            </div>
-          ) : null
-        }
+    <>
+      {pageContent}
+      <DocumentPreviewModal
+        open={Boolean(previewTarget)}
+        file={previewTarget}
+        onClose={handleClosePreview}
+        onDownload={handleDownloadDocument}
       />
-
-      <div className="space-y-6">
-        <div>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">Categories</h2>
-            <button
-              type="button"
-              className="text-xs font-semibold text-sky-300 hover:text-sky-200"
-            >
-              View All
-            </button>
-          </div>
-          {isLoading ? (
-            <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-6 text-sm text-slate-400">
-              Loading folders...
-            </div>
-          ) : folders.length ? (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {folders.map((folder) => (
-                <FolderCard
-                  key={folder.id}
-                  folder={folder}
-                  canEdit={canEditDocuments}
-                  currentUserId={currentUserId}
-                  onSelect={(folderId) => setSelectedFolderId(folderId)}
-                  onEdit={(selected) => {
-                    setEditFolderTarget(selected);
-                    setCreateFolderOpen(true);
-                  }}
-                  onDelete={(selected) => setDeleteFolderTarget(selected)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-6 text-sm text-slate-400">
-              No folders yet. Create your first folder to get started.
-            </div>
-          )}
-        </div>
-
-        <div>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-white">
-              Recent Documents
-            </h2>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setRecentView("grid")}
-                className={`rounded p-1.5 ${
-                  recentView === "grid"
-                    ? "bg-sky-500/20 text-sky-200"
-                    : "text-slate-400 hover:bg-slate-800"
-                }`}
-                aria-label="Grid view"
-              >
-                <IconLayoutGrid size={15} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setRecentView("list")}
-                className={`rounded p-1.5 ${
-                  recentView === "list"
-                    ? "bg-sky-500/20 text-sky-200"
-                    : "text-slate-400 hover:bg-slate-800"
-                }`}
-                aria-label="List view"
-              >
-                <IconList size={15} />
-              </button>
-            </div>
-          </div>
-
-          {!isLoading && recentFiles.length === 0 ? (
-            <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-6 text-sm text-slate-400">
-              No recent documents yet.
-            </div>
-          ) : recentView === "grid" ? (
-            <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-4">
-              {recentFiles.map((file) => (
-                <DocumentGridCard
-                  key={file.id}
-                  file={file}
-                  onEditClick={
-                    canEditDocuments && canManageFile(file)
-                      ? () => handleOpenEditDocument(file, file.folderId)
-                      : null
-                  }
-                  onDeleteClick={
-                    canEditDocuments && canManageFile(file)
-                      ? () => openDeleteDocument(file, file.folderId)
-                      : null
-                  }
-                />
-              ))}
-            </div>
-          ) : (
-            <DocumentTable
-              files={recentFiles}
-              variant="recent"
-              onEditClick={
-                canEditDocuments
-                  ? (file) => handleOpenEditDocument(file, file.folderId)
-                  : null
-              }
-              onDeleteClick={
-                canEditDocuments
-                  ? (file) => openDeleteDocument(file, file.folderId)
-                  : null
-              }
-              canManageFile={canManageFile}
-            />
-          )}
-        </div>
-      </div>
-
-      <CreateFolderModal
-        open={createFolderOpen}
-        onClose={() => {
-          setCreateFolderOpen(false);
-          setEditFolderTarget(null);
-        }}
-        onCreate={handleCreateFolder}
-        onUpdate={handleUpdateFolder}
-        mode={editFolderTarget ? "edit" : "create"}
-        initialFolder={editFolderTarget}
-      />
-
-      <ConfirmModal
-        open={Boolean(deleteFolderTarget)}
-        title="Delete Folder?"
-        message={`This will remove "${
-          deleteFolderTarget?.name || "this folder"
-        }" and all documents inside it.`}
-        confirmLabel="Delete Folder"
-        onConfirm={handleDeleteFolder}
-        onCancel={() => setDeleteFolderTarget(null)}
-      />
-
-      <AddDocumentSlider
-        open={sliderOpen}
-        onClose={() => {
-          setUploadSliderOpen(false);
-          setEditDocumentTarget(null);
-        }}
-        folderOptions={folders.map((folder) => ({
-          id: folder.id,
-          name: folder.name,
-        }))}
-        defaultFolderId={editDocumentTarget?.folderId}
-        onUpload={handleUploadDocument}
-        onUpdate={handleUpdateDocument}
-        isSubmitting={isDocumentSubmitting}
-        mode={editDocumentTarget ? "edit" : "create"}
-        initialDocument={editDocumentTarget?.file || null}
-      />
-
-      <ConfirmModal
-        open={Boolean(deleteDocumentTarget)}
-        title="Delete Document?"
-        message={`This will permanently remove "${
-          deleteDocumentTarget?.name || "this document"
-        }".`}
-        confirmLabel="Delete Document"
-        onConfirm={handleDeleteDocument}
-        onCancel={() => setDeleteDocumentTarget(null)}
-      />
-    </section>
+    </>
   );
 }

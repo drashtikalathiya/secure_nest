@@ -10,7 +10,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { firebaseLogout } from "../../services/firebaseAuth";
-import { NAV_ITEMS } from "../../const/navigation";
+import { NAV_ITEMS } from "../../constants/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { canViewModule } from "../../utils/permissions";
 import { clearAuthToken } from "../../services/apiClient";

@@ -1,17 +1,5 @@
 import { IconFolder, IconPencil, IconTrash } from "@tabler/icons-react";
-
-function formatSize(sizeMb) {
-  if (sizeMb >= 1024) return `${(sizeMb / 1024).toFixed(2)} GB`;
-  return `${(sizeMb || 0).toFixed(1)} MB`;
-}
-
-function getFolderTotals(files) {
-  const totalSize = files.reduce((sum, file) => sum + (file.sizeMb || 0), 0);
-  return {
-    fileCount: files.length,
-    totalSize,
-  };
-}
+import { formatSize, getFolderTotals } from "../../utils/documentUtils";
 
 export default function FolderCard({
   folder,
@@ -28,10 +16,10 @@ export default function FolderCard({
     <div
       key={folder.id}
       onClick={() => onSelect?.(folder.id)}
-      className="group relative rounded-2xl border cursor-pointer border-slate-800/80 bg-dashboard-card p-4 text-left transition hover:border-slate-700 hover:bg-slate-900/70"
+      className="relative rounded-2xl border cursor-pointer border-slate-800/80 bg-dashboard-card p-4 text-left transition hover:border-slate-700 hover:bg-slate-900/70"
     >
       {canManage ? (
-        <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
+        <div className="absolute right-3 top-3 flex items-center gap-1">
           <button
             onClick={(event) => {
               event.stopPropagation();
@@ -47,10 +35,10 @@ export default function FolderCard({
               event.stopPropagation();
               onDelete?.(folder);
             }}
-            className="rounded p-1 text-rose-400 hover:bg-rose-500/15 hover:text-rose-300"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-rose-300"
             aria-label="Delete folder"
           >
-            <IconTrash size={20} />
+            <IconTrash size={18} />
           </button>
         </div>
       ) : null}

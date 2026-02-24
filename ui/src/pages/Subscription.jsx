@@ -2,7 +2,7 @@ import { useState } from "react";
 import { IconShieldCheck, IconClock } from "@tabler/icons-react";
 import PlanCard from "../components/PlanCard";
 import { createCheckoutSession } from "../services/billingApi";
-import { SUBSCRIPTION_PLANS } from "../const/subscriptionPlans";
+import { SUBSCRIPTION_PLANS } from "../constants/subscriptionPlans";
 
 const handleSubscribe = async (priceId) => {
   try {

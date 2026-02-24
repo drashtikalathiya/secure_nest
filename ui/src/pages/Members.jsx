@@ -21,7 +21,7 @@ import {
   getFamilyMembers,
   updateMemberPermissions,
 } from "../services/usersApi";
-import { PAGE_META } from "../const/pageMeta";
+import { PAGE_META } from "../constants/pageMeta";
 
 const ROLE_STYLES = {
   Owner: "bg-sky-500/20 text-sky-300",
@@ -604,7 +604,9 @@ export default function Members() {
         mode={activeSliderMode || "permissions"}
         member={activeSliderMember}
         email={inviteEmail}
-        permissions={activeSliderMode === "invite" ? invitePermissions : permissionDraft}
+        permissions={
+          activeSliderMode === "invite" ? invitePermissions : permissionDraft
+        }
         onEmailChange={setInviteEmail}
         onChangePermission={(key, value) => {
           if (activeSliderMode === "invite") {
@@ -631,7 +633,9 @@ export default function Members() {
           }
           handleSavePermissionChanges();
         }}
-        loading={activeSliderMode === "invite" ? inviteLoading : permissionSaving}
+        loading={
+          activeSliderMode === "invite" ? inviteLoading : permissionSaving
+        }
       />
 
       <ConfirmModal

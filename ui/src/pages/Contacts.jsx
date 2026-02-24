@@ -6,7 +6,10 @@ import PageHeader from "../components/common/PageHeader";
 import ContactCard from "../components/contacts/ContactCard";
 import ContactFormModal from "../components/contacts/ContactFormModal";
 import { useAuth } from "../context/AuthContext";
-import { CATEGORY_OPTIONS, RELATIONSHIP_OPTIONS } from "../const/contactsData";
+import {
+  CATEGORY_OPTIONS,
+  RELATIONSHIP_OPTIONS,
+} from "../constants/contactsData";
 import { getFamilyMembers } from "../services/usersApi";
 import {
   createContact,
@@ -14,7 +17,7 @@ import {
   getContacts,
   updateContact,
 } from "../services/contactsApi";
-import { PAGE_META } from "../const/pageMeta";
+import { PAGE_META } from "../constants/pageMeta";
 
 const emptyNewContactForm = {
   name: "",

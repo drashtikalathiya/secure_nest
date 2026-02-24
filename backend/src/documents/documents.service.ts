@@ -36,6 +36,7 @@ const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
   'application/pdf',
   'image/png',
   'image/jpeg',
+  'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]);
 

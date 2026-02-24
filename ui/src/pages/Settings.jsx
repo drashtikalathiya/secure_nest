@@ -18,7 +18,7 @@ import { usePasswordSettings } from "../hooks/usePasswordSettings";
 import {
   SUBSCRIPTION_PLANS,
   normalizePlanId,
-} from "../const/subscriptionPlans";
+} from "../constants/subscriptionPlans";
 import { createCheckoutSession } from "../services/billingApi";
 
 export default function Settings() {

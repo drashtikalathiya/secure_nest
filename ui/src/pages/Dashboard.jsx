@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import PageHeader from "../components/common/PageHeader";
-import { VAULT_SECTIONS } from "../const/dashboardData";
-import { PAGE_META } from "../const/pageMeta";
+import { VAULT_SECTIONS } from "../constants/dashboardData";
+import { PAGE_META } from "../constants/pageMeta";
 import { getFamilyMembers } from "../services/usersApi";
 import { canViewModule } from "../utils/permissions";
 

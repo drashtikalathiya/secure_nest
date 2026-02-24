@@ -3,18 +3,11 @@ import toast from "react-hot-toast";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RightSlider from "../common/RightSlider";
 import VisibilityAccessSelector from "../common/VisibilityAccessSelector";
+import {
+  DOCUMENT_CATEGORIES,
+  ACCEPT_TYPES,
+} from "../../constants/documentsData";
 
-const DOCUMENT_CATEGORIES = [
-  "Identity",
-  "Legal",
-  "Property",
-  "Medical",
-  "Insurance",
-  "Finance",
-  "Personal",
-];
-
-const ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg,.docx";
 function getFileType(fileName = "") {
   const extension = fileName.split(".").pop()?.toUpperCase();
   if (!extension) return "FILE";
@@ -205,7 +198,7 @@ export default function AddDocumentSlider({
                 : "Drag and drop your file here"}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              Supports PDF, PNG, JPG, and DOCX (max 25MB)
+              Supports PDF, PNG, JPG, DOC, and DOCX (max 25MB)
             </p>
             <button
               type="button"

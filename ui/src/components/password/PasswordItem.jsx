@@ -11,7 +11,7 @@ import {
 import {
   PASSWORD_CATEGORY_ICON_STYLES,
   PASSWORD_CATEGORY_ICONS,
-} from "../../const/passwordsData";
+} from "../../constants/passwordsData";
 
 export default function PasswordItem({
   item,
