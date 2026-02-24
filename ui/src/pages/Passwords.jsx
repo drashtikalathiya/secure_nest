@@ -58,7 +58,6 @@ export default function Passwords() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [favoriteKeys, setFavoriteKeys] = useState({});
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [familyOptions, setFamilyOptions] = useState([]);
   const [modulePermissions, setModulePermissions] = useState({
     view: true,
     edit: false,
@@ -122,14 +121,6 @@ export default function Passwords() {
       const members = Array.isArray(membersRes?.data) ? membersRes.data : [];
       const me = members.find((member) => member.email === user?.email);
       setCurrentUserId(me?.id || null);
-      const options = members
-        .filter((member) => member.email !== user?.email)
-        .map((member) => ({
-          id: member.id,
-          name: member.name || member.email?.split("@")[0] || "Family Member",
-          relation: member.role === "owner" ? "Owner" : "Member",
-        }));
-      setFamilyOptions(options);
     } catch (error) {
       setCards([]);
       setModulePermissions({ view: true, edit: false, delete: false });
@@ -445,7 +436,6 @@ export default function Passwords() {
         onChange={handleChange}
         onSubmit={handleSave}
         setForm={setForm}
-        familyOptions={familyOptions}
         categoryOptions={
           availableCategories.length
             ? availableCategories

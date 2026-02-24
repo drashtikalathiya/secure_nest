@@ -10,6 +10,7 @@ import { UsersModule } from './users/users.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { PasswordsModule } from './passwords/passwords.module';
+import { DocumentsModule } from './documents/documents.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PasswordsModule } from './passwords/passwords.module';
     InvitationsModule,
     ContactsModule,
     PasswordsModule,
+    DocumentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

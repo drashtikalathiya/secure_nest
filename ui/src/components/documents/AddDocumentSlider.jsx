@@ -1,11 +1,6 @@
-import {
-  IconCloudUpload,
-  IconSearch,
-  IconUpload,
-  IconUser,
-  IconUsersGroup,
-} from "@tabler/icons-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { IconCloudUpload, IconSearch, IconUpload } from "@tabler/icons-react";
+import toast from "react-hot-toast";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RightSlider from "../common/RightSlider";
 import VisibilityAccessSelector from "../common/VisibilityAccessSelector";
 
@@ -19,35 +14,7 @@ const DOCUMENT_CATEGORIES = [
   "Personal",
 ];
 
-const ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg,.doc,.docx";
-const OWNER_OPTIONS = [
-  {
-    key: "alex",
-    label: "Alex (Me)",
-    initial: "A",
-    tone: "bg-amber-300 text-slate-900",
-  },
-  {
-    key: "jane",
-    label: "Jane",
-    initial: "J",
-    tone: "bg-pink-500/30 text-pink-200",
-  },
-  {
-    key: "billy",
-    label: "Billy",
-    initial: "B",
-    tone: "bg-blue-500/30 text-blue-200",
-  },
-  { key: "family", label: "Entire Family", icon: IconUsersGroup },
-];
-
-const DEFAULT_MEMBER_OPTIONS = [
-  { id: "alex", name: "Alex", role: "Owner" },
-  { id: "jane", name: "Jane", role: "Member" },
-  { id: "billy", name: "Billy", role: "Member" },
-];
-
+const ACCEPT_TYPES = ".pdf,.png,.jpg,.jpeg,.docx";
 function getFileType(fileName = "") {
   const extension = fileName.split(".").pop()?.toUpperCase();
   if (!extension) return "FILE";
@@ -68,9 +35,9 @@ export default function AddDocumentSlider({
   defaultFolderId,
   onUpload,
   onUpdate,
+  isSubmitting = false,
   mode = "create",
   initialDocument = null,
-  familyOptions = [],
 }) {
   const fileInputRef = useRef(null);
   const [documentTitle, setDocumentTitle] = useState("");
@@ -78,7 +45,6 @@ export default function AddDocumentSlider({
   const [folderId, setFolderId] = useState(defaultFolderId || "");
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [selectedOwner, setSelectedOwner] = useState(OWNER_OPTIONS[0].key);
   const [visibility, setVisibility] = useState("private");
   const [sharedWith, setSharedWith] = useState([]);
   const isEditMode = mode === "edit";
@@ -89,16 +55,15 @@ export default function AddDocumentSlider({
     return folderOptions?.[0]?.id || "";
   }, [defaultFolderId, folderId, folderOptions]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     setDocumentTitle("");
     setCategory(DOCUMENT_CATEGORIES[0]);
     setFolderId(defaultFolderId || "");
     setSelectedFile(null);
     setDragActive(false);
-    setSelectedOwner(OWNER_OPTIONS[0].key);
     setVisibility("private");
     setSharedWith([]);
-  };
+  }, [defaultFolderId]);
 
   const handleClose = () => {
     handleReset();
@@ -106,15 +71,22 @@ export default function AddDocumentSlider({
   };
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      handleReset();
+      return;
+    }
     if (!isEditMode || !initialDocument) return;
 
     setDocumentTitle(initialDocument.title || initialDocument.name || "");
+    setCategory(initialDocument.category || DOCUMENT_CATEGORIES[0]);
     setFolderId(defaultFolderId || "");
-    setSelectedOwner(initialDocument.owner || OWNER_OPTIONS[0].key);
     setVisibility(initialDocument.visibility || "private");
-    setSharedWith(Array.isArray(initialDocument.sharedWith) ? initialDocument.sharedWith : []);
-  }, [defaultFolderId, initialDocument, isEditMode, open]);
+    setSharedWith(
+      Array.isArray(initialDocument.sharedWith)
+        ? initialDocument.sharedWith
+        : [],
+    );
+  }, [defaultFolderId, handleReset, initialDocument, isEditMode, open]);
 
   const handleFile = (file) => {
     if (!file) return;
@@ -142,20 +114,26 @@ export default function AddDocumentSlider({
 
   const handleSubmit = (event) => {
     event.preventDefault();
+    if (isSubmitting) return;
     if (!activeFolderId || !documentTitle.trim()) return;
+    if (visibility === "specific" && (!sharedWith || sharedWith.length === 0)) {
+      toast.error("Select at least one member for specific access.");
+      return;
+    }
 
     if (isEditMode) {
       onUpdate?.({
         title: documentTitle.trim(),
         category,
         folderId: activeFolderId,
-        fileName: selectedFile?.name || initialDocument?.title || "",
-        fileType:
-          selectedFile?.name
-            ? getFileType(selectedFile.name)
-            : initialDocument?.fileType || "FILE",
-        sizeMb: selectedFile ? toMb(selectedFile.size) : initialDocument?.sizeMb || 0.1,
-        owner: selectedOwner,
+        file: selectedFile || null,
+        fileName: selectedFile?.name || initialDocument?.name || "",
+        fileType: selectedFile?.name
+          ? getFileType(selectedFile.name)
+          : initialDocument?.fileType || "FILE",
+        sizeMb: selectedFile
+          ? toMb(selectedFile.size)
+          : initialDocument?.sizeMb || 0.1,
         visibility,
         sharedWith,
       });
@@ -165,16 +143,14 @@ export default function AddDocumentSlider({
         title: documentTitle.trim(),
         category,
         folderId: activeFolderId,
+        file: selectedFile,
         fileName: selectedFile.name,
         fileType: getFileType(selectedFile.name),
         sizeMb: toMb(selectedFile.size),
-        owner: selectedOwner,
         visibility,
         sharedWith,
       });
     }
-
-    handleClose();
   };
 
   return (
@@ -224,7 +200,9 @@ export default function AddDocumentSlider({
               <IconCloudUpload size={20} />
             </div>
             <p className="mt-4 text-sm font-semibold text-slate-200">
-              {isEditMode ? "Replace file (optional)" : "Drag and drop your file here"}
+              {isEditMode
+                ? "Replace file (optional)"
+                : "Drag and drop your file here"}
             </p>
             <p className="mt-1 text-xs text-slate-500">
               Supports PDF, PNG, JPG, and DOCX (max 25MB)
@@ -250,10 +228,10 @@ export default function AddDocumentSlider({
                 Selected:{" "}
                 <span className="font-semibold">{selectedFile.name}</span>
               </p>
-            ) : isEditMode && initialDocument?.title ? (
+            ) : isEditMode && initialDocument?.name ? (
               <p className="mt-4 text-xs text-slate-300">
                 Current:{" "}
-                <span className="font-semibold">{initialDocument.title}</span>
+                <span className="font-semibold">{initialDocument.name}</span>
               </p>
             ) : null}
           </div>
@@ -307,48 +285,10 @@ export default function AddDocumentSlider({
             </label>
           </div>
 
-          <div>
-            <p className="text-sm font-semibold text-slate-200">
-              Who does this document belong to?
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {OWNER_OPTIONS.map((option) => {
-                const isSelected = selectedOwner === option.key;
-                const OwnerIcon = option.icon || IconUser;
-                return (
-                  <button
-                    key={option.key}
-                    type="button"
-                    onClick={() => setSelectedOwner(option.key)}
-                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold transition ${
-                      isSelected
-                        ? "border-sky-500 bg-sky-500/10 text-sky-100"
-                        : "border-slate-800/80 bg-slate-900/50 text-slate-300 hover:text-slate-100"
-                    }`}
-                  >
-                    {option.initial ? (
-                      <span
-                        className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold ${option.tone}`}
-                      >
-                        {option.initial}
-                      </span>
-                    ) : (
-                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-700/70 text-slate-200">
-                        <OwnerIcon size={12} />
-                      </span>
-                    )}
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           <VisibilityAccessSelector
             title="Who can see this document?"
             visibility={visibility}
             onVisibilityChange={setVisibility}
-            memberOptions={familyOptions.length ? familyOptions : DEFAULT_MEMBER_OPTIONS}
             sharedWith={sharedWith}
             onToggleMember={toggleMember}
           />
@@ -363,6 +303,7 @@ export default function AddDocumentSlider({
               <button
                 type="button"
                 onClick={handleClose}
+                disabled={isSubmitting}
                 className="rounded-lg px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800"
               >
                 Cancel
@@ -373,12 +314,19 @@ export default function AddDocumentSlider({
                 disabled={
                   !documentTitle.trim() ||
                   !activeFolderId ||
-                  (!isEditMode && !selectedFile)
+                  (!isEditMode && !selectedFile) ||
+                  isSubmitting
                 }
                 className="inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <IconUpload size={14} />
-                {isEditMode ? "Save Changes" : "Upload to Vault"}
+                {isSubmitting
+                  ? isEditMode
+                    ? "Saving..."
+                    : "Uploading..."
+                  : isEditMode
+                    ? "Save Changes"
+                    : "Upload to Vault"}
               </button>
             </div>
           </div>

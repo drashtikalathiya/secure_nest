@@ -104,9 +104,9 @@ export default function AppLayout() {
             <button
               type="button"
               onClick={handleLogout}
-              className="flex w-full items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-200 transition hover:border-red-400/60 hover:bg-red-500/20"
+              className="flex w-full items-center gap-3 rounded-xl border border-sky-500/30 bg-slate-800/80 px-3 py-2 text-sm font-medium text-sky-400 transition hover:border-sky-500/60 hover:bg-slate-800/20"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/20 text-red-200">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-500/20 text-sky-300">
                 <IconLogout size={18} stroke={1.8} />
               </span>
               Logout
@@ -149,9 +149,9 @@ export default function AppLayout() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-200 transition hover:border-red-400/60 hover:bg-red-500/20"
+                  className="flex w-full items-center gap-3 rounded-xl border border-sky-500/30 bg-slate-800/80 px-3 py-2 text-sm font-medium text-sky-400 transition"
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/20 text-red-200">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-500/20 text-sky-300">
                     <IconLogout size={18} stroke={1.8} />
                   </span>
                   Logout
@@ -189,7 +189,7 @@ export default function AppLayout() {
                 <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800/80 bg-slate-900/50 text-slate-200">
                   <IconBell size={18} />
                 </button>
-                <button className="flex items-center gap-3 px-3 py-2 text-left border-l border-slate-800/80">
+                <div className="flex items-center gap-3 px-3 py-2 text-left border-l border-slate-800/80">
                   <div className="hidden md:block">
                     <p className="text-xs font-semibold text-white">
                       {displayName}
@@ -209,7 +209,7 @@ export default function AppLayout() {
                       <IconUser size={16} />
                     </div>
                   )}
-                </button>
+                </div>
               </div>
             </div>
           </header>

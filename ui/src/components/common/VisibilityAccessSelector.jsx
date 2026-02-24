@@ -1,4 +1,7 @@
 import { IconLock, IconUsers, IconUsersGroup } from "@tabler/icons-react";
+import { useEffect, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
+import { getFamilyMembers } from "../../services/usersApi";
 
 const ACCESS_OPTIONS = [
   {
@@ -34,10 +37,42 @@ export default function VisibilityAccessSelector({
   title,
   visibility,
   onVisibilityChange,
-  memberOptions = [],
   sharedWith = [],
   onToggleMember,
 }) {
+  const { user } = useAuth();
+  const [memberOptions, setMemberOptions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isActive = true;
+    const loadMembers = async () => {
+      try {
+        const res = await getFamilyMembers();
+        const members = Array.isArray(res?.data) ? res.data : [];
+        const filtered = user?.email
+          ? members.filter((member) => member.email !== user.email)
+          : members;
+        const normalized = filtered.map((member) => ({
+          id: member.id,
+          name: member.name || member.email?.split("@")[0] || "Member",
+          relation: member.role === "owner" ? "Owner" : "Member",
+          profile_photo_url: member.profile_photo_url || "",
+        }));
+        if (isActive) setMemberOptions(normalized);
+      } catch {
+        if (isActive) setMemberOptions([]);
+      } finally {
+        if (isActive) setLoading(false);
+      }
+    };
+
+    loadMembers();
+    return () => {
+      isActive = false;
+    };
+  }, [user?.email]);
+
   return (
     <div>
       <p className="text-sm font-semibold text-slate-200">{title}</p>
@@ -70,7 +105,9 @@ export default function VisibilityAccessSelector({
               <p className="mt-2 text-xs font-semibold text-slate-200">
                 {option.title}
               </p>
-              <p className="mt-1 text-[10px] text-slate-500">{option.subtitle}</p>
+              <p className="mt-1 text-[10px] text-slate-500">
+                {option.subtitle}
+              </p>
             </button>
           );
         })}
@@ -94,9 +131,17 @@ export default function VisibilityAccessSelector({
                 }`}
               >
                 <span className="flex items-center gap-2.5">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500/15 text-xs font-semibold text-sky-200">
-                    {getInitials(member.name)}
-                  </span>
+                  {member.profile_photo_url || member.photoUrl ? (
+                    <img
+                      src={member.profile_photo_url || member.photoUrl}
+                      alt={member.name}
+                      className="h-8 w-8 rounded-full object-cover ring-2 ring-sky-500/30"
+                    />
+                  ) : (
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500/15 text-xs font-semibold text-sky-200">
+                      {getInitials(member.name)}
+                    </span>
+                  )}
                   <span>
                     <span className="block text-xs font-semibold text-slate-200">
                       {member.name}
@@ -120,7 +165,7 @@ export default function VisibilityAccessSelector({
 
           {memberOptions.length === 0 ? (
             <div className="px-3 py-3 text-[11px] text-slate-500">
-              No family members found.
+              {loading ? "Loading family members..." : "No family members found."}
             </div>
           ) : null}
         </div>

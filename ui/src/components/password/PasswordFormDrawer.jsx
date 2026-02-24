@@ -10,7 +10,6 @@ export default function PasswordFormDrawer({
   onChange,
   onSubmit,
   setForm,
-  familyOptions = [],
   categoryOptions = [],
   saving = false,
 }) {
@@ -146,7 +145,6 @@ export default function PasswordFormDrawer({
             title="Who can see this password?"
             visibility={form.visibility}
             onVisibilityChange={setVisibility}
-            memberOptions={familyOptions}
             sharedWith={form.sharedWith || []}
             onToggleMember={toggleSharedMember}
           />

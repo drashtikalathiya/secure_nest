@@ -1,39 +1,6 @@
-import {
-  IconBriefcase,
-  IconFileDescription,
-  IconFolder,
-  IconHeart,
-  IconHome,
-  IconShield,
-  IconStar,
-  IconX,
-} from "@tabler/icons-react";
+import { IconFolder, IconX } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import VisibilityAccessSelector from "../common/VisibilityAccessSelector";
-
-const COLOR_OPTIONS = [
-  { key: "blue", className: "bg-blue-500" },
-  { key: "emerald", className: "bg-emerald-500" },
-  { key: "amber", className: "bg-amber-500" },
-  { key: "rose", className: "bg-rose-500" },
-  { key: "violet", className: "bg-violet-500" },
-];
-
-const ICON_OPTIONS = [
-  { key: "folder", icon: IconFolder, label: "Folder" },
-  { key: "briefcase", icon: IconBriefcase, label: "Briefcase" },
-  { key: "heart", icon: IconHeart, label: "Health" },
-  { key: "document", icon: IconFileDescription, label: "Document" },
-  { key: "star", icon: IconStar, label: "Star" },
-  { key: "home", icon: IconHome, label: "Home" },
-  { key: "shield", icon: IconShield, label: "Shield" },
-];
-
-const DUMMY_MEMBERS = [
-  { id: "m-1", name: "Drashti", relation: "Member" },
-  { id: "m-2", name: "dinebuddychef", relation: "Member" },
-  { id: "m-3", name: "sifipaf888", relation: "Member" },
-];
 
 export default function CreateFolderModal({
   open,
@@ -42,19 +9,14 @@ export default function CreateFolderModal({
   onUpdate,
   mode = "create",
   initialFolder = null,
-  familyOptions = [],
 }) {
   const [folderName, setFolderName] = useState("");
-  const [selectedColor, setSelectedColor] = useState(COLOR_OPTIONS[0].key);
-  const [selectedIcon, setSelectedIcon] = useState(ICON_OPTIONS[0].key);
   const [selectedAccess, setSelectedAccess] = useState("private");
   const [selectedMembers, setSelectedMembers] = useState([]);
 
   useEffect(() => {
     if (!open) {
       setFolderName("");
-      setSelectedColor(COLOR_OPTIONS[0].key);
-      setSelectedIcon(ICON_OPTIONS[0].key);
       setSelectedAccess("private");
       setSelectedMembers([]);
       return;
@@ -62,8 +24,6 @@ export default function CreateFolderModal({
 
     if (mode === "edit" && initialFolder) {
       setFolderName(initialFolder.name || "");
-      setSelectedColor(initialFolder.color || COLOR_OPTIONS[0].key);
-      setSelectedIcon(initialFolder.icon || ICON_OPTIONS[0].key);
       setSelectedAccess(initialFolder.visibility || "private");
       setSelectedMembers(
         Array.isArray(initialFolder.sharedWith) ? initialFolder.sharedWith : [],
@@ -78,8 +38,6 @@ export default function CreateFolderModal({
 
     const payload = {
       name: trimmedName,
-      color: selectedColor,
-      icon: selectedIcon,
       visibility: selectedAccess,
       sharedWith: selectedMembers,
     };
@@ -135,56 +93,10 @@ export default function CreateFolderModal({
             </label>
 
             <div>
-              <p className="text-xs font-semibold text-slate-400">
-                Select Icon or Color
-              </p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                {COLOR_OPTIONS.map((option) => (
-                  <button
-                    key={option.key}
-                    type="button"
-                    onClick={() => setSelectedColor(option.key)}
-                    className={`flex h-8 w-8 items-center justify-center rounded-full border-2 transition ${
-                      selectedColor === option.key
-                        ? "border-sky-300"
-                        : "border-transparent"
-                    }`}
-                    aria-label={`Select ${option.key} color`}
-                  >
-                    <span
-                      className={`h-5 w-5 rounded-full ${option.className}`}
-                    />
-                  </button>
-                ))}
-
-                {ICON_OPTIONS.slice(4).map((option) => {
-                  const Icon = option.icon;
-                  const isSelected = selectedIcon === option.key;
-                  return (
-                    <button
-                      key={option.key}
-                      type="button"
-                      onClick={() => setSelectedIcon(option.key)}
-                      className={`flex h-8 w-8 items-center justify-center rounded-md border transition ${
-                        isSelected
-                          ? "border-sky-500/60 bg-sky-500/20 text-sky-200"
-                          : "border-slate-800/80 bg-slate-800/60 text-slate-400 hover:text-slate-200"
-                      }`}
-                      aria-label={`Select ${option.label} icon`}
-                    >
-                      <Icon size={14} />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div>
               <VisibilityAccessSelector
                 title="Who can see this folder?"
                 visibility={selectedAccess}
                 onVisibilityChange={setSelectedAccess}
-                memberOptions={familyOptions.length && familyOptions}
                 sharedWith={selectedMembers}
                 onToggleMember={toggleMember}
               />

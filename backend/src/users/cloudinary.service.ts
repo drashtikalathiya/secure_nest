@@ -50,6 +50,57 @@ export class CloudinaryService {
     return data.secure_url as string;
   }
 
+  async uploadDocument(file: {
+    buffer: Buffer;
+    mimetype: string;
+    originalname: string;
+  }, publicId: string): Promise<{
+    url: string;
+    publicId: string;
+    resourceType: string;
+    bytes: number;
+    originalFilename?: string;
+    format?: string;
+  }> {
+    this.ensureConfigured();
+
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const paramsToSign = `public_id=${publicId}&timestamp=${timestamp}`;
+    const signature = this.sign(paramsToSign);
+
+    const formData = new FormData();
+    const bytes = new Uint8Array(file.buffer);
+    formData.append('file', new Blob([bytes], { type: file.mimetype }));
+    formData.append('public_id', publicId);
+    formData.append('api_key', this.apiKey!);
+    formData.append('timestamp', timestamp);
+    formData.append('signature', signature);
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${this.cloudName}/auto/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      },
+    );
+
+    const data = await response.json();
+    if (!response.ok || !data?.secure_url || !data?.public_id) {
+      throw new InternalServerErrorException(
+        data?.error?.message || 'Failed to upload document to Cloudinary.',
+      );
+    }
+
+    return {
+      url: data.secure_url as string,
+      publicId: data.public_id as string,
+      resourceType: data.resource_type as string,
+      bytes: typeof data.bytes === 'number' ? data.bytes : 0,
+      originalFilename: data.original_filename as string | undefined,
+      format: data.format as string | undefined,
+    };
+  }
+
   async deleteProfilePhotoByKey(profileKey: string): Promise<void> {
     this.ensureConfigured();
 
@@ -63,6 +114,39 @@ export class CloudinaryService {
     if (!publicId) return;
 
     await this.destroyImage(publicId);
+  }
+
+  async deleteAsset(publicId: string, resourceType: string): Promise<void> {
+    this.ensureConfigured();
+
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const paramsToSign = `public_id=${publicId}&timestamp=${timestamp}`;
+    const signature = this.sign(paramsToSign);
+
+    const body = new URLSearchParams({
+      public_id: publicId,
+      timestamp,
+      api_key: this.apiKey!,
+      signature,
+    });
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${this.cloudName}/${resourceType}/destroy`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: body.toString(),
+      },
+    );
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => null);
+      throw new InternalServerErrorException(
+        data?.error?.message || 'Failed to delete file from Cloudinary.',
+      );
+    }
   }
 
   private async destroyImage(publicId: string): Promise<void> {

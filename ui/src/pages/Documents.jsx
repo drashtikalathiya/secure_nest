@@ -1,15 +1,8 @@
 import {
   IconArrowLeft,
-  IconBriefcase,
-  IconFileDescription,
-  IconFolder,
-  IconHeart,
   IconLayoutGrid,
   IconList,
   IconPlus,
-  IconShield,
-  IconStar,
-  IconTrash,
   IconUpload,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -19,26 +12,20 @@ import AddDocumentSlider from "../components/documents/AddDocumentSlider";
 import CreateFolderModal from "../components/documents/CreateFolderModal";
 import DocumentGridCard from "../components/documents/DocumentGridCard";
 import DocumentTable from "../components/documents/DocumentTable";
+import FolderCard from "../components/documents/FolderCard";
 import PageHeader from "../components/common/PageHeader";
-import { FOLDER_STYLE_COLORS, INITIAL_FOLDERS } from "../const/documentsData";
 import { PAGE_META } from "../const/pageMeta";
 import { useAuth } from "../context/AuthContext";
 import { getFamilyMembers } from "../services/usersApi";
-
-const FOLDER_ICONS = {
-  folder: IconFolder,
-  briefcase: IconBriefcase,
-  heart: IconHeart,
-  shield: IconShield,
-  star: IconStar,
-  document: IconFileDescription,
-  lock: IconShield,
-};
-
-function formatSize(sizeMb) {
-  if (sizeMb >= 1024) return `${(sizeMb / 1024).toFixed(2)} GB`;
-  return `${(sizeMb || 0).toFixed(1)} MB`;
-}
+import {
+  createDocument,
+  createFolder,
+  deleteDocument,
+  deleteFolder,
+  getDocuments,
+  updateFolder,
+  updateDocument,
+} from "../services/documentsApi";
 
 function getFolderTotals(files) {
   const totalSize = files.reduce((sum, file) => sum + (file.sizeMb || 0), 0);
@@ -50,6 +37,52 @@ function getFolderTotals(files) {
 
 function getDocumentLabel(file) {
   return file?.name || file?.title || "Untitled Document";
+}
+
+function formatUploadedAt(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
+}
+
+function mapDocumentFile(file, memberMap = new Map()) {
+  return {
+    id: file.id,
+    name: file.file_name || "",
+    title: file.title || file.file_name || "Untitled Document",
+    fileType: file.file_type || "FILE",
+    category: file.category || "",
+    uploadedAt: formatUploadedAt(file.created_at),
+    sizeMb: typeof file.size_mb === "number" ? file.size_mb : 0,
+    visibility: file.visibility || "family",
+    sharedWith: Array.isArray(file.shared_with_user_ids)
+      ? file.shared_with_user_ids
+      : [],
+    sharedWithProfiles: Array.isArray(file.shared_with_user_ids)
+      ? file.shared_with_user_ids.map((id) => memberMap.get(id)).filter(Boolean)
+      : [],
+    created_by_user_id: file.created_by_user_id || null,
+  };
+}
+
+function mapFolder(folder, memberMap) {
+  return {
+    id: folder.id,
+    name: folder.name || "Untitled Folder",
+    visibility: folder.visibility || "family",
+    sharedWith: Array.isArray(folder.shared_with_user_ids)
+      ? folder.shared_with_user_ids
+      : [],
+    created_by_user_id: folder.created_by_user_id || null,
+    files: Array.isArray(folder.files)
+      ? folder.files.map((file) => mapDocumentFile(file, memberMap))
+      : [],
+  };
 }
 
 function toRecentFileItems(folders) {
@@ -67,17 +100,19 @@ function toRecentFileItems(folders) {
 
 export default function Documents() {
   const { user } = useAuth();
-  const isOwner = user?.role === "owner";
-  const [canEditDocuments, setCanEditDocuments] = useState(
-    isOwner || user?.permission_documents_access_level === "edit",
-  );
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [familyOptions, setFamilyOptions] = useState([]);
-  const [folders, setFolders] = useState(INITIAL_FOLDERS);
+  const [folders, setFolders] = useState([]);
   const [selectedFolderId, setSelectedFolderId] = useState(null);
+  const [modulePermissions, setModulePermissions] = useState({
+    view: true,
+    edit: false,
+    delete: false,
+  });
+  const [isLoading, setIsLoading] = useState(true);
 
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [deleteFolderTarget, setDeleteFolderTarget] = useState(null);
+  const [editFolderTarget, setEditFolderTarget] = useState(null);
 
   const [uploadSliderOpen, setUploadSliderOpen] = useState(false);
   const [recentView, setRecentView] = useState("grid");
@@ -85,8 +120,10 @@ export default function Documents() {
 
   const [editDocumentTarget, setEditDocumentTarget] = useState(null);
   const [deleteDocumentTarget, setDeleteDocumentTarget] = useState(null);
+  const [isDocumentSubmitting, setIsDocumentSubmitting] = useState(false);
 
   const pageTitle = PAGE_META["/documents"];
+  const canEditDocuments = Boolean(modulePermissions.edit);
 
   const selectedFolder = useMemo(
     () => folders.find((folder) => folder.id === selectedFolderId) || null,
@@ -95,143 +132,185 @@ export default function Documents() {
 
   const recentFiles = useMemo(() => toRecentFileItems(folders), [folders]);
 
-  const loadDocumentPermission = useCallback(async () => {
+  const loadDocuments = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const membersRes = await getFamilyMembers();
+      const [documentsRes, membersRes] = await Promise.all([
+        getDocuments(),
+        getFamilyMembers(),
+      ]);
+
+      const documentsData = documentsRes?.data || {};
+      const rawFolders = Array.isArray(documentsData.folders)
+        ? documentsData.folders
+        : [];
+      setModulePermissions(
+        documentsData.permissions || { view: true, edit: false, delete: false },
+      );
+
       const members = Array.isArray(membersRes?.data) ? membersRes.data : [];
       const me = members.find((member) => member.email === user?.email);
-
-      if (!me) return;
-
-      setCurrentUserId(me.id || null);
-      setFamilyOptions(
-        members
-          .filter((member) => member.email !== user?.email)
-          .map((member) => ({
+      setCurrentUserId(me?.id || null);
+      const memberMap = new Map(
+        members.map((member) => [
+          member.id,
+          {
             id: member.id,
-            name: member.name || member.email?.split("@")[0] || "Member",
-            relation: member.role === "owner" ? "Owner" : "Member",
-          })),
+            name: member.name || member.email?.split("@")?.[0] || "Member",
+            photoUrl: member.profile_photo_url || "",
+          },
+        ]),
       );
-      setCanEditDocuments(
-        me.role === "owner" || me.permission_documents_access_level === "edit",
-      );
-    } catch {
-      setCanEditDocuments(
-        isOwner || user?.permission_documents_access_level === "edit",
-      );
+      setFolders(rawFolders.map((folder) => mapFolder(folder, memberMap)));
+    } catch (error) {
+      setFolders([]);
+      setModulePermissions({ view: true, edit: false, delete: false });
+      setCurrentUserId(null);
+      toast.error(error?.message || "Failed to load documents.");
+    } finally {
+      setIsLoading(false);
     }
-  }, [isOwner, user?.email, user?.permission_documents_access_level]);
+  }, [user?.email]);
 
   useEffect(() => {
-    loadDocumentPermission();
-  }, [loadDocumentPermission]);
+    loadDocuments();
+  }, [loadDocuments]);
 
-  const handleCreateFolder = ({
-    name,
-    color,
-    icon,
-    visibility,
-    sharedWith,
-  }) => {
-    if (!isOwner) {
-      toast.error("Only owner can manage folders.");
-      return;
-    }
+  const handleCreateFolder = async ({ name, visibility, sharedWith }) => {
     if (!canEditDocuments) {
       toast.error("You do not have permission to edit documents.");
       return;
     }
-    const newFolder = {
-      id: `folder-${Date.now()}`,
-      name,
-      color,
-      icon,
-      visibility: visibility || "family",
-      sharedWith: Array.isArray(sharedWith) ? sharedWith : [],
-      files: [],
-    };
-
-    setFolders((prev) => [newFolder, ...prev]);
-    setCreateFolderOpen(false);
-    toast.success("Folder created");
+    try {
+      const response = await createFolder({
+        name,
+        visibility,
+        sharedWith,
+      });
+      const created = response?.data;
+      if (created) {
+        setFolders((prev) => [mapFolder(created), ...prev]);
+      }
+      setCreateFolderOpen(false);
+      toast.success("Folder created");
+    } catch (error) {
+      toast.error(error?.message || "Failed to create folder.");
+    }
   };
 
-  const handleDeleteFolder = () => {
+  const handleUpdateFolder = async ({ name, visibility, sharedWith }) => {
+    if (!editFolderTarget?.id) return;
+    if (!canEditDocuments) {
+      toast.error("You do not have permission to edit documents.");
+      return;
+    }
+    try {
+      const response = await updateFolder(editFolderTarget.id, {
+        name,
+        visibility,
+        sharedWith,
+      });
+      const updated = response?.data;
+      if (updated) {
+        setFolders((prev) =>
+          prev.map((folder) =>
+            folder.id === editFolderTarget.id ? mapFolder(updated) : folder,
+          ),
+        );
+      }
+      setEditFolderTarget(null);
+      setCreateFolderOpen(false);
+      toast.success("Folder updated");
+    } catch (error) {
+      toast.error(error?.message || "Failed to update folder.");
+    }
+  };
+
+  const handleDeleteFolder = async () => {
     if (!deleteFolderTarget?.id) return;
-    if (!isOwner) {
-      toast.error("Only owner can manage folders.");
-      return;
-    }
     if (!canEditDocuments) {
       toast.error("You do not have permission to edit documents.");
       return;
     }
+    try {
+      await deleteFolder(deleteFolderTarget.id);
+      setFolders((prev) =>
+        prev.filter((folder) => folder.id !== deleteFolderTarget.id),
+      );
 
-    setFolders((prev) =>
-      prev.filter((folder) => folder.id !== deleteFolderTarget.id),
-    );
+      if (selectedFolderId === deleteFolderTarget.id) {
+        setSelectedFolderId(null);
+      }
 
-    if (selectedFolderId === deleteFolderTarget.id) {
-      setSelectedFolderId(null);
+      setDeleteFolderTarget(null);
+      toast.success("Folder deleted");
+    } catch (error) {
+      toast.error(error?.message || "Failed to delete folder.");
     }
-
-    setDeleteFolderTarget(null);
-    toast.success("Folder deleted");
   };
 
-  const handleUploadDocument = ({
-    name,
+  const handleUploadDocument = async ({
     title,
+    category,
     folderId,
     fileName,
     fileType,
     sizeMb,
     visibility,
     sharedWith,
-    owner,
+    file,
   }) => {
     if (!canEditDocuments) {
       toast.error("You do not have permission to edit documents.");
       return;
     }
-    const newDocument = {
-      id: `doc-${Date.now()}`,
-      name: name || "",
-      title: title || fileName || "",
-      fileType,
-      uploadedAt: "Just now",
-      sizeMb: sizeMb || 0.1,
-      visibility: visibility || "family",
-      sharedWith: Array.isArray(sharedWith) ? sharedWith : [],
-      owner: owner || "alex",
-      created_by_user_id: currentUserId,
-    };
-
-    setFolders((prev) =>
-      prev.map((folder) => {
-        if (folder.id !== folderId) return folder;
-        return {
-          ...folder,
-          files: [newDocument, ...folder.files],
-        };
-      }),
-    );
-
-    toast.success("Document added to folder");
+    if (isDocumentSubmitting) return;
+    setIsDocumentSubmitting(true);
+    try {
+      const response = await createDocument({
+        title,
+        category,
+        folderId,
+        file,
+        fileName,
+        fileType,
+        sizeMb,
+        visibility,
+        sharedWith,
+      });
+      const created = response?.data;
+      if (created) {
+        const mapped = mapDocumentFile(created);
+        setFolders((prev) =>
+          prev.map((folder) => {
+            if (folder.id !== folderId) return folder;
+            return {
+              ...folder,
+              files: [mapped, ...folder.files],
+            };
+          }),
+        );
+      }
+      setUploadSliderOpen(false);
+      setEditDocumentTarget(null);
+      toast.success("Document added to folder");
+    } catch (error) {
+      toast.error(error?.message || "Failed to upload document.");
+    } finally {
+      setIsDocumentSubmitting(false);
+    }
   };
 
   const canManageFile = useCallback(
     (file) => {
       if (!canEditDocuments) return false;
-      if (isOwner) return true;
       return Boolean(
         currentUserId &&
         file?.created_by_user_id &&
         file.created_by_user_id === currentUserId,
       );
     },
-    [canEditDocuments, currentUserId, isOwner],
+    [canEditDocuments, currentUserId],
   );
 
   const handleOpenEditDocument = (file, folderId) => {
@@ -250,15 +329,16 @@ export default function Documents() {
     });
   };
 
-  const handleUpdateDocument = ({
+  const handleUpdateDocument = async ({
     title,
     folderId,
     fileName,
     fileType,
     sizeMb,
-    owner,
     visibility,
     sharedWith,
+    category,
+    file,
   }) => {
     if (!canEditDocuments) {
       toast.error("You do not have permission to edit documents.");
@@ -270,62 +350,72 @@ export default function Documents() {
       toast.error("You can edit only documents created by you.");
       return;
     }
+    if (isDocumentSubmitting) return;
+    setIsDocumentSubmitting(true);
 
-    const sourceFolderId = editDocumentTarget.folderId;
-    const destinationFolderId = folderId || sourceFolderId;
-    const existing = editDocumentTarget.file || {};
-
-    const updatedDoc = {
-      ...existing,
-      title: title || existing.title || fileName || "",
-      fileType: fileType || existing.fileType || "FILE",
-      sizeMb: typeof sizeMb === "number" ? sizeMb : existing.sizeMb || 0.1,
-      owner: owner || existing.owner || "alex",
-      visibility: visibility || existing.visibility || "family",
-      sharedWith: Array.isArray(sharedWith)
-        ? sharedWith
-        : Array.isArray(existing.sharedWith)
-          ? existing.sharedWith
-          : [],
-    };
-
-    setFolders((prev) => {
-      if (sourceFolderId === destinationFolderId) {
-        return prev.map((folder) => {
-          if (folder.id !== sourceFolderId) return folder;
-          return {
-            ...folder,
-            files: folder.files.map((doc) =>
-              doc.id === editDocumentTarget.documentId ? updatedDoc : doc,
-            ),
-          };
-        });
-      }
-
-      return prev.map((folder) => {
-        if (folder.id === sourceFolderId) {
-          return {
-            ...folder,
-            files: folder.files.filter(
-              (doc) => doc.id !== editDocumentTarget.documentId,
-            ),
-          };
-        }
-        if (folder.id === destinationFolderId) {
-          return {
-            ...folder,
-            files: [updatedDoc, ...folder.files],
-          };
-        }
-        return folder;
+    try {
+      const response = await updateDocument(editDocumentTarget.documentId, {
+        title,
+        folderId,
+        file,
+        fileName,
+        fileType,
+        sizeMb,
+        visibility,
+        sharedWith,
+        category,
       });
-    });
+      const updated = response?.data;
+      if (!updated) return;
 
-    setEditDocumentTarget(null);
-    toast.success("Document updated");
+      const mapped = mapDocumentFile(updated);
+      const sourceFolderId = editDocumentTarget.folderId;
+      const destinationFolderId =
+        updated.folder_id || folderId || sourceFolderId;
+
+      setFolders((prev) => {
+        if (sourceFolderId === destinationFolderId) {
+          return prev.map((folder) => {
+            if (folder.id !== sourceFolderId) return folder;
+            return {
+              ...folder,
+              files: folder.files.map((doc) =>
+                doc.id === editDocumentTarget.documentId ? mapped : doc,
+              ),
+            };
+          });
+        }
+
+        return prev.map((folder) => {
+          if (folder.id === sourceFolderId) {
+            return {
+              ...folder,
+              files: folder.files.filter(
+                (doc) => doc.id !== editDocumentTarget.documentId,
+              ),
+            };
+          }
+          if (folder.id === destinationFolderId) {
+            return {
+              ...folder,
+              files: [mapped, ...folder.files],
+            };
+          }
+          return folder;
+        });
+      });
+
+      setEditDocumentTarget(null);
+      setUploadSliderOpen(false);
+      toast.success("Document updated");
+    } catch (error) {
+      toast.error(error?.message || "Failed to update document.");
+    } finally {
+      setIsDocumentSubmitting(false);
+    }
   };
 
-  const handleDeleteDocument = () => {
+  const handleDeleteDocument = async () => {
     if (!deleteDocumentTarget?.folderId || !deleteDocumentTarget?.documentId)
       return;
     if (!canEditDocuments) {
@@ -340,21 +430,26 @@ export default function Documents() {
       return;
     }
 
-    setFolders((prev) =>
-      prev.map((folder) => {
-        if (folder.id !== deleteDocumentTarget.folderId) return folder;
+    try {
+      await deleteDocument(deleteDocumentTarget.documentId);
+      setFolders((prev) =>
+        prev.map((folder) => {
+          if (folder.id !== deleteDocumentTarget.folderId) return folder;
 
-        return {
-          ...folder,
-          files: folder.files.filter(
-            (doc) => doc.id !== deleteDocumentTarget.documentId,
-          ),
-        };
-      }),
-    );
+          return {
+            ...folder,
+            files: folder.files.filter(
+              (doc) => doc.id !== deleteDocumentTarget.documentId,
+            ),
+          };
+        }),
+      );
 
-    setDeleteDocumentTarget(null);
-    toast.success("Document deleted");
+      setDeleteDocumentTarget(null);
+      toast.success("Document deleted");
+    } catch (error) {
+      toast.error(error?.message || "Failed to delete document.");
+    }
   };
 
   const openDeleteDocument = (file, folderId) => {
@@ -374,47 +469,6 @@ export default function Documents() {
     });
   };
 
-  const renderFolderCard = (folder) => {
-    const FolderIcon = FOLDER_ICONS[folder.icon] || IconFolder;
-    const styleClasses =
-      FOLDER_STYLE_COLORS[folder.color] || FOLDER_STYLE_COLORS.slate;
-    const totals = getFolderTotals(folder.files);
-
-    return (
-      <div
-        key={folder.id}
-        onClick={() => setSelectedFolderId(folder.id)}
-        className="group relative rounded-2xl border cursor-pointer border-slate-800/80 bg-dashboard-card p-4 text-left transition hover:border-slate-700 hover:bg-slate-900/70"
-      >
-        {isOwner ? (
-          <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition group-hover:opacity-100">
-            <button
-              onClick={(event) => {
-                event.stopPropagation();
-                setDeleteFolderTarget(folder);
-              }}
-              className="rounded p-1 text-rose-400 hover:bg-rose-500/15 hover:text-rose-300"
-              aria-label="Delete folder"
-            >
-              <IconTrash size={20} />
-            </button>
-          </div>
-        ) : null}
-
-        <span
-          className={`mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg border ${styleClasses}`}
-        >
-          <FolderIcon size={20} />
-        </span>
-        <p className="text-sm font-semibold text-slate-100">{folder.name}</p>
-        <p className="mt-1 text-xs text-slate-500">
-          {totals.fileCount} file{totals.fileCount === 1 ? "" : "s"} •{" "}
-          {formatSize(totals.totalSize)}
-        </p>
-      </div>
-    );
-  };
-
   const sliderOpen = uploadSliderOpen || Boolean(editDocumentTarget);
 
   if (selectedFolder) {
@@ -423,8 +477,8 @@ export default function Documents() {
     return (
       <section className="pb-6">
         <div className="mt-6">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
+          <div className="">
+            <div className="flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => setSelectedFolderId(null)}
@@ -433,52 +487,53 @@ export default function Documents() {
                 <IconArrowLeft size={20} />
                 Back to Folders
               </button>
+              <div className="flex gap-2">
+                <div className="flex items-center rounded-xl border border-slate-800/80 bg-slate-900/60 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setFolderView("grid")}
+                    className={`rounded-lg p-2 transition ${
+                      folderView === "grid"
+                        ? "bg-primary text-white"
+                        : "text-slate-400 hover:bg-slate-800"
+                    }`}
+                    aria-label="Grid view"
+                  >
+                    <IconLayoutGrid size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFolderView("list")}
+                    className={`rounded-lg p-2 transition ${
+                      folderView === "list"
+                        ? "bg-primary text-white"
+                        : "text-slate-400 hover:bg-slate-800"
+                    }`}
+                    aria-label="List view"
+                  >
+                    <IconList size={16} />
+                  </button>
+                </div>
+
+                {canEditDocuments ? (
+                  <button
+                    type="button"
+                    onClick={() => setUploadSliderOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary-strong px-4 py-2.5 text-xs font-semibold text-white"
+                  >
+                    <IconUpload size={15} />
+                    Upload to this Folder
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <div>
               <h1 className="mt-1 text-3xl font-semibold text-white">
                 {selectedFolder.name}
               </h1>
               <p className="mt-1 text-sm text-slate-400">
                 {totals.fileCount} files • Last updated 2 hours ago
               </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="flex items-center rounded-xl border border-slate-800/80 bg-slate-900/60 p-1">
-                <button
-                  type="button"
-                  onClick={() => setFolderView("grid")}
-                  className={`rounded-lg p-2 transition ${
-                    folderView === "grid"
-                      ? "bg-primary text-white"
-                      : "text-slate-400 hover:bg-slate-800"
-                  }`}
-                  aria-label="Grid view"
-                >
-                  <IconLayoutGrid size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFolderView("list")}
-                  className={`rounded-lg p-2 transition ${
-                    folderView === "list"
-                      ? "bg-primary text-white"
-                      : "text-slate-400 hover:bg-slate-800"
-                  }`}
-                  aria-label="List view"
-                >
-                  <IconList size={16} />
-                </button>
-              </div>
-
-              {canEditDocuments ? (
-                <button
-                  type="button"
-                  onClick={() => setUploadSliderOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-primary-strong px-4 py-2.5 text-xs font-semibold text-white"
-                >
-                  <IconUpload size={15} />
-                  Upload to this Folder
-                </button>
-              ) : null}
             </div>
           </div>
 
@@ -550,9 +605,9 @@ export default function Documents() {
           defaultFolderId={editDocumentTarget?.folderId || selectedFolder.id}
           onUpload={handleUploadDocument}
           onUpdate={handleUpdateDocument}
+          isSubmitting={isDocumentSubmitting}
           mode={editDocumentTarget ? "edit" : "create"}
           initialDocument={editDocumentTarget?.file || null}
-          familyOptions={familyOptions}
         />
 
         <ConfirmModal
@@ -577,16 +632,17 @@ export default function Documents() {
         right={
           canEditDocuments ? (
             <div className="flex items-center gap-2">
-              {isOwner ? (
-                <button
-                  type="button"
-                  onClick={() => setCreateFolderOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-800"
-                >
-                  <IconPlus size={15} />
-                  New Folder
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setEditFolderTarget(null);
+                  setCreateFolderOpen(true);
+                }}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/60 px-4 py-2 text-xs font-semibold text-slate-100 hover:bg-slate-800"
+              >
+                <IconPlus size={15} />
+                New Folder
+              </button>
               <button
                 type="button"
                 onClick={() => setUploadSliderOpen(true)}
@@ -611,9 +667,32 @@ export default function Documents() {
               View All
             </button>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {folders.map((folder) => renderFolderCard(folder))}
-          </div>
+          {isLoading ? (
+            <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-6 text-sm text-slate-400">
+              Loading folders...
+            </div>
+          ) : folders.length ? (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {folders.map((folder) => (
+                <FolderCard
+                  key={folder.id}
+                  folder={folder}
+                  canEdit={canEditDocuments}
+                  currentUserId={currentUserId}
+                  onSelect={(folderId) => setSelectedFolderId(folderId)}
+                  onEdit={(selected) => {
+                    setEditFolderTarget(selected);
+                    setCreateFolderOpen(true);
+                  }}
+                  onDelete={(selected) => setDeleteFolderTarget(selected)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-6 text-sm text-slate-400">
+              No folders yet. Create your first folder to get started.
+            </div>
+          )}
         </div>
 
         <div>
@@ -649,7 +728,11 @@ export default function Documents() {
             </div>
           </div>
 
-          {recentView === "grid" ? (
+          {!isLoading && recentFiles.length === 0 ? (
+            <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-6 text-sm text-slate-400">
+              No recent documents yet.
+            </div>
+          ) : recentView === "grid" ? (
             <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-4">
               {recentFiles.map((file) => (
                 <DocumentGridCard
@@ -690,9 +773,14 @@ export default function Documents() {
 
       <CreateFolderModal
         open={createFolderOpen}
-        onClose={() => setCreateFolderOpen(false)}
+        onClose={() => {
+          setCreateFolderOpen(false);
+          setEditFolderTarget(null);
+        }}
         onCreate={handleCreateFolder}
-        familyOptions={familyOptions}
+        onUpdate={handleUpdateFolder}
+        mode={editFolderTarget ? "edit" : "create"}
+        initialFolder={editFolderTarget}
       />
 
       <ConfirmModal
@@ -719,9 +807,9 @@ export default function Documents() {
         defaultFolderId={editDocumentTarget?.folderId}
         onUpload={handleUploadDocument}
         onUpdate={handleUpdateDocument}
+        isSubmitting={isDocumentSubmitting}
         mode={editDocumentTarget ? "edit" : "create"}
         initialDocument={editDocumentTarget?.file || null}
-        familyOptions={familyOptions}
       />
 
       <ConfirmModal
