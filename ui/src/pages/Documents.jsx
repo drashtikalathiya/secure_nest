@@ -113,6 +113,7 @@ export default function Documents() {
 
   const pageTitle = PAGE_META["/documents"];
   const canEditDocuments = Boolean(modulePermissions.edit);
+  const canExportDocuments = Boolean(user?.permission_export_data);
 
   const selectedFolder = useMemo(
     () => folders.find((folder) => folder.id === selectedFolderId) || null,
@@ -561,6 +562,7 @@ export default function Documents() {
                   file={file}
                   onPreview={handleOpenPreview}
                   onDownloadClick={() => handleDownloadDocument(file)}
+                  canDownload={canExportDocuments}
                   onEditClick={
                     canEditDocuments && canManageFile(file)
                       ? () => handleOpenEditDocument(file, selectedFolder.id)
@@ -760,7 +762,8 @@ export default function Documents() {
                     key={file.id}
                     file={file}
                     onPreview={handleOpenPreview}
-                    onDownloadClick={() => handleDownloadDocument(file)}
+                  onDownloadClick={() => handleDownloadDocument(file)}
+                  canDownload={canExportDocuments}
                     onEditClick={
                       canEditDocuments && canManageFile(file)
                         ? () => handleOpenEditDocument(file, file.folderId)
@@ -858,6 +861,7 @@ export default function Documents() {
         file={previewTarget}
         onClose={handleClosePreview}
         onDownload={handleDownloadDocument}
+        canDownload={canExportDocuments}
       />
     </>
   );

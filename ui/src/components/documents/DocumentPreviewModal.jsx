@@ -13,6 +13,7 @@ export default function DocumentPreviewModal({
   file,
   onClose,
   onDownload,
+  canDownload = true,
 }) {
   if (!open || !file) return null;
 
@@ -102,7 +103,13 @@ export default function DocumentPreviewModal({
                   <button
                     type="button"
                     onClick={() => onDownload?.(file)}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary-strong"
+                    disabled={!canDownload}
+                    className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold ${
+                      canDownload
+                        ? "bg-primary text-white hover:bg-primary-strong"
+                        : "cursor-not-allowed bg-slate-800/70 text-slate-500"
+                    }`}
+                    aria-disabled={!canDownload}
                   >
                     <IconDownload size={14} />
                     Download

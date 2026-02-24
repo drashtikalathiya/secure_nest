@@ -38,6 +38,7 @@ export default function DocumentGridCard({
   onEditClick,
   onDeleteClick,
   onPreview,
+  canDownload = true,
 }) {
   const visibility = file?.visibility || "family";
   const isPrivate = visibility === "private";
@@ -185,17 +186,19 @@ export default function DocumentGridCard({
                 <IconTrash size={18} />
               </button>
             ) : null}
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onDownloadClick?.();
-              }}
-              className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-200"
-              aria-label="Download document"
-            >
-              <IconDownload size={18} />
-            </button>
+            {canDownload ? (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDownloadClick?.();
+                }}
+                className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-200"
+                aria-label="Download document"
+              >
+                <IconDownload size={18} />
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
