@@ -21,10 +21,8 @@ type RecentActivityItem = {
 @Injectable()
 export class DashboardService {
   constructor(
-    @InjectRepository(User)
-    private userRepo: Repository<User>,
-    @InjectRepository(Contact)
-    private contactRepo: Repository<Contact>,
+    @InjectRepository(User) private userRepo: Repository<User>,
+    @InjectRepository(Contact) private contactRepo: Repository<Contact>,
     @InjectRepository(PasswordRecord)
     private passwordRepo: Repository<PasswordRecord>,
     @InjectRepository(DocumentFile)
@@ -32,63 +30,59 @@ export class DashboardService {
     private permissionsService: PermissionsService,
   ) {}
 
-  private async resolveRequester(firebaseUid: string): Promise<User> {
+  private async getContext(firebaseUid: string) {
     const user = await this.userRepo.findOne({
       where: { firebase_uid: firebaseUid },
     });
-
     if (!user) throw new NotFoundException('User account was not found.');
-    return user;
-  }
 
-  private resolveFamilyOwnerId(user: User): string {
-    return user.role === USER_ROLES.OWNER
-      ? user.id
-      : (user.family_owner_id ?? user.id);
-  }
+    const familyOwnerId =
+      user.role === USER_ROLES.OWNER
+        ? user.id
+        : (user.family_owner_id ?? user.id);
 
-  private async getPermissions(user: User) {
-    return Promise.all([
+    const perms = await Promise.all([
       this.permissionsService.getModuleCrudPermissions(user, 'contacts'),
       this.permissionsService.getModuleCrudPermissions(user, 'passwords'),
       this.permissionsService.getModuleCrudPermissions(user, 'documents'),
     ]);
+
+    return { user, familyOwnerId, perms };
   }
 
-  private getDisplayName(user?: User | null) {
-    return user?.name || user?.email || 'Vault';
-  }
+  private displayName = (user?: User | null) =>
+    user?.name || user?.email || 'Vault';
 
-  private canSeeVisibilityRecord(
+  private canSeeVisibilityRecord = (
     requester: User,
-    record: {
+    record?: {
       visibility?: 'private' | 'family' | 'specific';
       created_by_user_id?: string;
       shared_with_user_ids?: string[] | null;
     },
-  ): boolean {
-    const visibility = record.visibility ?? 'family';
+  ) => {
+    const visibility = record?.visibility ?? 'family';
 
     if (visibility === 'family') return true;
     if (visibility === 'private')
-      return record.created_by_user_id === requester.id;
-
+      return record?.created_by_user_id === requester.id;
     if (visibility === 'specific')
       return (
-        record.created_by_user_id === requester.id ||
-        record.shared_with_user_ids?.includes(requester.id) === true
+        record?.created_by_user_id === requester.id ||
+        record?.shared_with_user_ids?.includes(requester.id)
       );
 
     return false;
-  }
+  };
+
+  private canSeeDocument = (user: User, doc: DocumentFile) =>
+    this.canSeeVisibilityRecord(user, doc) &&
+    this.canSeeVisibilityRecord(user, doc.folder);
 
   async getOverview(firebaseUid: string) {
-    const requester = await this.resolveRequester(firebaseUid);
-    const familyOwnerId = this.resolveFamilyOwnerId(requester);
+    const { user, familyOwnerId, perms } = await this.getContext(firebaseUid);
 
-    const [contactsPerm, passwordsPerm, documentsPerm] =
-      await this.getPermissions(requester);
-
+    const [contactsPerm, passwordsPerm, documentsPerm] = perms;
     const baseWhere = { family_owner_id: familyOwnerId };
 
     const [members, contacts, passwords, documents] = await Promise.all([
@@ -98,21 +92,51 @@ export class DashboardService {
           { family_owner_id: familyOwnerId, role: USER_ROLES.MEMBER },
         ],
       }),
+
       contactsPerm.view ? this.contactRepo.count({ where: baseWhere }) : 0,
-      passwordsPerm.view ? this.passwordRepo.count({ where: baseWhere }) : 0,
-      documentsPerm.view ? this.documentRepo.count({ where: baseWhere }) : 0,
+
+      passwordsPerm.view
+        ? this.passwordRepo.find({
+            where: baseWhere,
+            select: [
+              'id',
+              'visibility',
+              'created_by_user_id',
+              'shared_with_user_ids',
+            ],
+          })
+        : [],
+
+      documentsPerm.view
+        ? this.documentRepo.find({
+            where: baseWhere,
+            select: [
+              'id',
+              'visibility',
+              'created_by_user_id',
+              'shared_with_user_ids',
+            ],
+            relations: ['folder'],
+          })
+        : [],
     ]);
 
-    return { members, contacts, passwords, documents };
+    return {
+      members,
+      contacts,
+      passwords: Array.isArray(passwords)
+        ? passwords.filter((p) => this.canSeeVisibilityRecord(user, p)).length
+        : passwords,
+      documents: Array.isArray(documents)
+        ? documents.filter((d) => this.canSeeDocument(user, d)).length
+        : documents,
+    };
   }
 
   async getRecentActivity(firebaseUid: string, limit = 8) {
-    const requester = await this.resolveRequester(firebaseUid);
-    const familyOwnerId = this.resolveFamilyOwnerId(requester);
+    const { user, familyOwnerId, perms } = await this.getContext(firebaseUid);
 
-    const [contactsPerm, passwordsPerm, documentsPerm] =
-      await this.getPermissions(requester);
-
+    const [contactsPerm, passwordsPerm, documentsPerm] = perms;
     const take = Math.max(3, Math.ceil(limit / 3));
     const baseFind = {
       where: { family_owner_id: familyOwnerId },
@@ -135,49 +159,53 @@ export class DashboardService {
       }),
     ]);
 
-    const activity: RecentActivityItem[] = [
-      ...passwords
-        .filter((r) => this.canSeeVisibilityRecord(requester, r))
-        .map((r) => ({
-          id: `password-${r.id}`,
-          user_name: this.getDisplayName(r.created_by_user),
-          action: 'added a password for',
-          target_label: r.site_name,
-          module: 'passwords' as const,
-          route: '/passwords',
-          created_at: r.created_at,
-        })),
-
-      ...documents
-        .filter((r) => this.canSeeVisibilityRecord(requester, r))
-        .map((r) => ({
-          id: `document-${r.id}`,
-          user_name: this.getDisplayName(r.created_by_user),
-          action: 'uploaded',
-          target_label: r.title,
-          module: 'documents' as const,
-          route: '/documents',
-          created_at: r.created_at,
-        })),
-
-      ...contacts.map((r) => ({
-        id: `contact-${r.id}`,
-        user_name: this.getDisplayName(r.created_by_user),
-        action: 'added',
-        target_label: r.name,
-        module: 'contacts' as const,
-        route: '/contacts',
+    const build = (
+      list,
+      module: RecentActivityItem['module'],
+      action: string,
+      route: string,
+      labelKey: string,
+    ) =>
+      list.map((r) => ({
+        id: `${module}-${r.id}`,
+        user_name: this.displayName(r.created_by_user),
+        action,
+        target_label: r[labelKey],
+        module,
+        route,
         created_at: r.created_at,
-      })),
+      }));
 
-      ...members.map((r) => ({
-        id: `member-${r.id}`,
+    const activity: RecentActivityItem[] = [
+      ...build(
+        passwords.filter((p) => this.canSeeVisibilityRecord(user, p)),
+        'passwords',
+        'added a password for',
+        '/passwords',
+        'site_name',
+      ),
+      ...build(
+        documents.filter((d) => this.canSeeVisibilityRecord(user, d)),
+        'documents',
+        'uploaded',
+        '/documents',
+        'title',
+      ),
+      ...build(
+        contacts,
+        'contacts',
+        'added a contact for',
+        '/contacts',
+        'name',
+      ),
+      ...members.map((m) => ({
+        id: `member-${m.id}`,
         user_name: 'Vault',
         action: 'added member',
-        target_label: this.getDisplayName(r),
-        module: 'members' as const,
+        target_label: this.displayName(m),
+        module: 'members',
         route: '/members',
-        created_at: r.created_at,
+        created_at: m.created_at,
       })),
     ];
 
