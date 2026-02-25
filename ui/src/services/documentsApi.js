@@ -7,6 +7,14 @@ export const getDocuments = async () => {
   return data;
 };
 
+export const getRecentDocuments = async (limit = 4) => {
+  const { data } = await axiosInstance.get("/documents/recent", {
+    params: { limit },
+    meta: { fallbackMessage: "Failed to fetch recent documents" },
+  });
+  return data;
+};
+
 export const createFolder = async (body) => {
   const { data } = await axiosInstance.post("/documents/folders", body, {
     meta: { fallbackMessage: "Failed to create folder" },

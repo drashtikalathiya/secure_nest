@@ -32,6 +32,7 @@ import {
   deleteDocument,
   deleteFolder,
   getDocuments,
+  getRecentDocuments,
   updateFolder,
   updateDocument,
 } from "../services/documentsApi";
@@ -74,16 +75,15 @@ function mapFolder(folder, memberMap) {
   };
 }
 
-function toRecentFileItems(folders) {
-  return folders
-    .flatMap((folder) =>
-      folder.files.map((file) => ({
-        ...file,
-        folderId: folder.id,
-        folderName: folder.name,
-        folderColor: folder.color,
-      })),
-    )
+function toRecentFileItems(recentDocuments, memberMap) {
+  return (Array.isArray(recentDocuments) ? recentDocuments : [])
+    .map((file) => ({
+      ...mapDocumentFile(file, memberMap),
+      folderId: file.folder_id || file.folderId || file.folder?.id || null,
+      folderName:
+        file.folder_name || file.folderName || file.folder?.name || "",
+      folderColor: file.folder?.color || null,
+    }))
     .slice(0, 4);
 }
 
@@ -91,6 +91,7 @@ export default function Documents() {
   const { user } = useAuth();
   const [currentUserId, setCurrentUserId] = useState(null);
   const [folders, setFolders] = useState([]);
+  const [recentFiles, setRecentFiles] = useState([]);
   const [selectedFolderId, setSelectedFolderId] = useState(null);
   const [modulePermissions, setModulePermissions] = useState({
     view: true,
@@ -122,7 +123,6 @@ export default function Documents() {
     [folders, selectedFolderId],
   );
 
-  const recentFiles = useMemo(() => toRecentFileItems(folders), [folders]);
   const visibleFolders = useMemo(
     () => (showAllFolders ? folders : folders.slice(0, 4)),
     [folders, showAllFolders],
@@ -149,9 +149,10 @@ export default function Documents() {
   const loadDocuments = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [documentsRes, membersRes] = await Promise.all([
+      const [documentsRes, membersRes, recentRes] = await Promise.all([
         getDocuments(),
         getFamilyMembers(),
+        getRecentDocuments(4),
       ]);
 
       const documentsData = documentsRes?.data || {};
@@ -165,7 +166,7 @@ export default function Documents() {
       const members = Array.isArray(membersRes?.data) ? membersRes.data : [];
       const me = members.find((member) => member.email === user?.email);
       setCurrentUserId(me?.id || null);
-      const memberMap = new Map(
+      const membersMap = new Map(
         members.map((member) => [
           member.id,
           {
@@ -175,9 +176,12 @@ export default function Documents() {
           },
         ]),
       );
-      setFolders(rawFolders.map((folder) => mapFolder(folder, memberMap)));
+      const recentData = Array.isArray(recentRes?.data) ? recentRes.data : [];
+      setRecentFiles(toRecentFileItems(recentData, membersMap));
+      setFolders(rawFolders.map((folder) => mapFolder(folder, membersMap)));
     } catch (error) {
       setFolders([]);
+      setRecentFiles([]);
       setModulePermissions({ view: true, edit: false, delete: false });
       setCurrentUserId(null);
       toast.error(error?.message || "Failed to load documents.");

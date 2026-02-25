@@ -13,6 +13,22 @@ export type DocumentListResponseDto = {
   permissions: DocumentPermissionsDto;
 };
 
+export type RecentDocumentItemDto = {
+  id: string;
+  title: string;
+  file_name: string | null;
+  category: string | null;
+  file_type: string | null;
+  file_url: string | null;
+  size_mb: number | null;
+  visibility: DocumentVisibility;
+  shared_with_user_ids: string[] | null;
+  created_at: Date;
+  created_by_user_id: string;
+  folder_id: string;
+  folder_name: string | null;
+};
+
 export type CreateFolderDto = {
   name?: string | null;
   visibility?: DocumentVisibility | null;

@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UploadedFile,
   UseInterceptors,
@@ -63,6 +64,23 @@ export class DocumentsController {
       return sendSuccess('Documents fetched successfully', documents);
     } catch (error) {
       return sendError('Failed to fetch documents', getErrorMessage(error));
+    }
+  }
+
+  @Get('recent')
+  async getRecentDocuments(
+    @Req() req: AuthenticatedRequest,
+    @Query('limit') limit?: string,
+  ) {
+    try {
+      const parsedLimit = Math.max(1, Math.min(Number(limit) || 4, 25));
+      const documents = await this.documentsService.getRecentDocuments(
+        req.user.uid,
+        parsedLimit,
+      );
+      return sendSuccess('Recent documents fetched successfully', documents);
+    } catch (error) {
+      return sendError('Failed to fetch recent documents', getErrorMessage(error));
     }
   }
 

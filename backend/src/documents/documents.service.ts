@@ -19,6 +19,7 @@ import type {
   CreateFolderDto,
   DocumentListResponseDto,
   DocumentPermissionsDto,
+  RecentDocumentItemDto,
   DocumentVisibility,
   UpdateFolderDto,
   UpdateDocumentDto,
@@ -39,6 +40,8 @@ const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]);
+
+const RECENT_DOCUMENT_FALLBACK_TAKE = 40;
 
 @Injectable()
 export class DocumentsService {
@@ -85,6 +88,52 @@ export class DocumentsService {
       folders: visibleFolders,
       permissions,
     };
+  }
+
+  async getRecentDocuments(
+    firebaseUid: string,
+    limit = 4,
+  ): Promise<RecentDocumentItemDto[]> {
+    const requester = await this.getRequester(firebaseUid);
+    const permissions = await this.permissionsService.getModuleCrudPermissions(
+      requester,
+      'documents',
+    );
+    this.ensureCanViewDocuments(permissions);
+
+    const familyOwnerId = this.getFamilyOwnerId(requester);
+    const take = Math.max(RECENT_DOCUMENT_FALLBACK_TAKE, limit * 4);
+
+    const documents = await this.documentRepo.find({
+      where: { family_owner_id: familyOwnerId },
+      order: { created_at: 'DESC' },
+      take,
+      relations: ['folder'],
+    });
+
+    return documents
+      .filter(
+        (file) =>
+          Boolean(file.folder) &&
+          this.canViewFolder(file.folder as DocumentFolder, requester.id) &&
+          this.canViewDocument(file, requester.id),
+      )
+      .slice(0, limit)
+      .map((file) => ({
+        id: file.id,
+        title: file.title,
+        file_name: file.file_name,
+        category: file.category,
+        file_type: file.file_type,
+        file_url: file.file_url,
+        size_mb: file.size_mb,
+        visibility: file.visibility,
+        shared_with_user_ids: file.shared_with_user_ids,
+        created_at: file.created_at,
+        created_by_user_id: file.created_by_user_id,
+        folder_id: file.folder_id,
+        folder_name: file.folder?.name ?? null,
+      }));
   }
 
   async createFolder(
