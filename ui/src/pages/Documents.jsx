@@ -6,7 +6,7 @@ import {
   IconPlus,
   IconUpload,
 } from "@tabler/icons-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import ConfirmModal from "../components/common/ConfirmModal";
 import EmptyState from "../components/common/EmptyState";
@@ -19,7 +19,7 @@ import FolderCard from "../components/documents/FolderCard";
 import PageHeader from "../components/common/PageHeader";
 import { PAGE_META } from "../constants/pageMeta";
 import { useAuth } from "../context/AuthContext";
-import { getFamilyMembers } from "../services/usersApi";
+import { useFamilyMembers } from "../context/FamilyMembersContext";
 import {
   downloadFile,
   formatUploadedAt,
@@ -89,11 +89,12 @@ function toRecentFileItems(recentDocuments, memberMap) {
 
 export default function Documents() {
   const { user } = useAuth();
+  const { members, loading: membersLoading, refreshMembers } =
+    useFamilyMembers();
   const [currentUserId, setCurrentUserId] = useState(null);
   const [folders, setFolders] = useState([]);
   const [recentFiles, setRecentFiles] = useState([]);
   const [selectedFolderId, setSelectedFolderId] = useState(null);
-  const familyMembersRef = useRef([]);
   const [modulePermissions, setModulePermissions] = useState({
     view: true,
     edit: false,
@@ -147,10 +148,10 @@ export default function Documents() {
     }
   };
 
-  const refreshRecentDocuments = useCallback(async (members) => {
-    const sourceMembers = Array.isArray(members)
-      ? members
-      : familyMembersRef.current;
+  const refreshRecentDocuments = useCallback(async (membersInput) => {
+    const sourceMembers = Array.isArray(membersInput)
+      ? membersInput
+      : members;
     if (!Array.isArray(sourceMembers)) return;
 
     const membersMap = new Map(
@@ -171,15 +172,12 @@ export default function Documents() {
     } catch {
       setRecentFiles([]);
     }
-  }, []);
+  }, [members]);
 
   const loadDocuments = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [documentsRes, membersRes] = await Promise.all([
-        getDocuments(),
-        getFamilyMembers(),
-      ]);
+      const [documentsRes] = await Promise.all([getDocuments()]);
 
       const documentsData = documentsRes?.data || {};
       const rawFolders = Array.isArray(documentsData.folders)
@@ -189,12 +187,15 @@ export default function Documents() {
         documentsData.permissions || { view: true, edit: false, delete: false },
       );
 
-      const members = Array.isArray(membersRes?.data) ? membersRes.data : [];
-      const me = members.find((member) => member.email === user?.email);
+      let membersList = members;
+      if (!membersList.length && !membersLoading) {
+        membersList = (await refreshMembers()) || [];
+      }
+
+      const me = membersList.find((member) => member.email === user?.email);
       setCurrentUserId(me?.id || null);
-      familyMembersRef.current = members;
       const membersMap = new Map(
-        members.map((member) => [
+        membersList.map((member) => [
           member.id,
           {
             id: member.id,
@@ -204,18 +205,23 @@ export default function Documents() {
         ]),
       );
       setFolders(rawFolders.map((folder) => mapFolder(folder, membersMap)));
-      await refreshRecentDocuments(members);
+      await refreshRecentDocuments(membersList);
     } catch (error) {
       setFolders([]);
       setRecentFiles([]);
-      familyMembersRef.current = [];
       setModulePermissions({ view: true, edit: false, delete: false });
       setCurrentUserId(null);
       toast.error(error?.message || "Failed to load documents.");
     } finally {
       setIsLoading(false);
     }
-  }, [refreshRecentDocuments, user?.email]);
+  }, [
+    members,
+    membersLoading,
+    refreshMembers,
+    refreshRecentDocuments,
+    user?.email,
+  ]);
 
   useEffect(() => {
     loadDocuments();

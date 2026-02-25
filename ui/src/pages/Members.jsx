@@ -10,17 +10,14 @@ import ConfirmModal from "../components/common/ConfirmModal";
 import PageHeader from "../components/common/PageHeader";
 import MemberPermissionsFields from "../components/members/MemberPermissionsFields";
 import { useAuth } from "../context/AuthContext";
+import { useFamilyMembers } from "../context/FamilyMembersContext";
 import {
   cancelInvitation,
   createInvitation,
   getPendingInvitations,
   resendInvitation,
 } from "../services/invitationsApi";
-import {
-  deleteFamilyMember,
-  getFamilyMembers,
-  updateMemberPermissions,
-} from "../services/usersApi";
+import { deleteFamilyMember, updateMemberPermissions } from "../services/usersApi";
 import { PAGE_META } from "../constants/pageMeta";
 
 const ROLE_STYLES = {
@@ -126,6 +123,7 @@ const formatTimeAgo = (value) => {
 
 export default function Members() {
   const { user } = useAuth();
+  const { refreshMembers } = useFamilyMembers();
   const isOwner = user?.role === "owner";
 
   const [search, setSearch] = useState("");
@@ -204,18 +202,18 @@ export default function Members() {
     setLoading(true);
     try {
       const [membersRes, invitesRes] = await Promise.all([
-        getFamilyMembers(),
+        refreshMembers(),
         isOwner ? getPendingInvitations() : Promise.resolve({ data: [] }),
       ]);
 
-      setMembers(membersRes?.data || []);
+      setMembers(Array.isArray(membersRes) ? membersRes : membersRes?.data || []);
       setPendingInvites(invitesRes?.data || []);
     } catch (error) {
       toast.error(error?.message || "Failed to load members.");
     } finally {
       setLoading(false);
     }
-  }, [isOwner]);
+  }, [isOwner, refreshMembers]);
 
   useEffect(() => {
     loadData();

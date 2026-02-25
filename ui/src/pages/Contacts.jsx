@@ -7,11 +7,11 @@ import PageHeader from "../components/common/PageHeader";
 import ContactCard from "../components/contacts/ContactCard";
 import ContactFormModal from "../components/contacts/ContactFormModal";
 import { useAuth } from "../context/AuthContext";
+import { useFamilyMembers } from "../context/FamilyMembersContext";
 import {
   CATEGORY_OPTIONS,
   RELATIONSHIP_OPTIONS,
 } from "../constants/contactsData";
-import { getFamilyMembers } from "../services/usersApi";
 import {
   createContact,
   deleteContact,
@@ -37,6 +37,8 @@ const toPhoneDigits = (value) =>
 
 export default function Contacts() {
   const { user } = useAuth();
+  const { members, loading: membersLoading, refreshMembers } =
+    useFamilyMembers();
 
   const [search, setSearch] = useState("");
   const [allContacts, setAllContacts] = useState([]);
@@ -70,10 +72,7 @@ export default function Contacts() {
   const loadContacts = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [contactsRes, membersRes] = await Promise.all([
-        getContacts(),
-        getFamilyMembers(),
-      ]);
+      const [contactsRes] = await Promise.all([getContacts()]);
 
       setAllContacts(contactsRes?.data?.items || []);
       setModulePermissions(
@@ -84,8 +83,11 @@ export default function Contacts() {
         },
       );
 
-      const members = Array.isArray(membersRes?.data) ? membersRes.data : [];
-      const me = members.find((member) => member.email === user?.email);
+      let membersList = members;
+      if (!membersList.length && !membersLoading) {
+        membersList = (await refreshMembers()) || [];
+      }
+      const me = membersList.find((member) => member.email === user?.email);
       setCurrentUserId(me?.id || null);
     } catch (error) {
       setModulePermissions({ view: true, edit: false, delete: false });
@@ -93,7 +95,7 @@ export default function Contacts() {
     } finally {
       setIsLoading(false);
     }
-  }, [user?.email]);
+  }, [members, membersLoading, refreshMembers, user?.email]);
 
   useEffect(() => {
     loadContacts();

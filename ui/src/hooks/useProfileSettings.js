@@ -3,13 +3,15 @@ import toast from "react-hot-toast";
 import { auth } from "../services/firebase";
 import { updateFirebaseUserProfile } from "../services/firebaseAuth";
 import {
-  getFamilyMembers,
   removeMyProfilePhoto,
   updateMyProfile,
   uploadMyProfilePhoto,
 } from "../services/usersApi";
+import { useFamilyMembers } from "../context/FamilyMembersContext";
 
 export function useProfileSettings(user, setUser) {
+  const { members, loading: membersLoading, refreshMembers } =
+    useFamilyMembers();
   const fileInputRef = useRef(null);
 
   const [profileForm, setProfileForm] = useState({
@@ -39,9 +41,11 @@ export function useProfileSettings(user, setUser) {
   useEffect(() => {
     const loadMemberDate = async () => {
       try {
-        const res = await getFamilyMembers();
-        const members = Array.isArray(res?.data) ? res.data : [];
-        const me = members.find((m) => m.email === user?.email);
+        let membersList = members;
+        if (!membersList.length && !membersLoading) {
+          membersList = (await refreshMembers()) || [];
+        }
+        const me = membersList.find((m) => m.email === user?.email);
         if (me?.created_at) {
           const date = new Date(me.created_at);
           setMemberSince(
@@ -57,7 +61,7 @@ export function useProfileSettings(user, setUser) {
     };
 
     if (user?.email) loadMemberDate();
-  }, [user?.email]);
+  }, [members, membersLoading, refreshMembers, user?.email]);
 
   const profileImage = useMemo(
     () => profileForm.profilePhotoUrl || user?.profile_photo_url || "",

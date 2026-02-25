@@ -13,11 +13,11 @@ import PageHeader from "../components/common/PageHeader";
 import PasswordFormDrawer from "../components/password/PasswordFormDrawer";
 import PasswordItem from "../components/password/PasswordItem";
 import { useAuth } from "../context/AuthContext";
+import { useFamilyMembers } from "../context/FamilyMembersContext";
 import {
   PASSWORD_CATEGORY_ICONS,
   PASSWORD_CATEGORY_OPTIONS,
 } from "../constants/passwordsData";
-import { getFamilyMembers } from "../services/usersApi";
 import {
   createPassword,
   deletePassword,
@@ -45,6 +45,8 @@ const toPasswordItem = (record) => ({
 
 export default function Passwords() {
   const { user } = useAuth();
+  const { members, loading: membersLoading, refreshMembers } =
+    useFamilyMembers();
 
   const [cards, setCards] = useState([]);
   const [revealed, setRevealed] = useState({});
@@ -107,10 +109,7 @@ export default function Passwords() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [passwordRes, membersRes] = await Promise.all([
-        getPasswords(),
-        getFamilyMembers(),
-      ]);
+      const [passwordRes] = await Promise.all([getPasswords()]);
 
       const passwordData = passwordRes?.data || {};
       const items = Array.isArray(passwordData.items) ? passwordData.items : [];
@@ -120,8 +119,11 @@ export default function Passwords() {
         passwordData.permissions || { view: true, edit: false, delete: false },
       );
 
-      const members = Array.isArray(membersRes?.data) ? membersRes.data : [];
-      const me = members.find((member) => member.email === user?.email);
+      let membersList = members;
+      if (!membersList.length && !membersLoading) {
+        membersList = (await refreshMembers()) || [];
+      }
+      const me = membersList.find((member) => member.email === user?.email);
       setCurrentUserId(me?.id || null);
     } catch (error) {
       setCards([]);
@@ -130,7 +132,7 @@ export default function Passwords() {
     } finally {
       setLoading(false);
     }
-  }, [user?.email]);
+  }, [members, membersLoading, refreshMembers, user?.email]);
 
   useEffect(() => {
     loadData();

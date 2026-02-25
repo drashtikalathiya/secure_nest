@@ -3,11 +3,14 @@ import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import { AuthProvider } from "./context/AuthContext";
+import { FamilyMembersProvider } from "./context/FamilyMembersContext";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <AuthProvider>
-    <App />
+    <FamilyMembersProvider>
+      <App />
+    </FamilyMembersProvider>
   </AuthProvider>,
 );
 

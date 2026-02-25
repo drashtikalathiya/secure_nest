@@ -1,7 +1,7 @@
 import { IconLock, IconUsers, IconUsersGroup } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { getFamilyMembers } from "../../services/usersApi";
+import { useFamilyMembers } from "../../context/FamilyMembersContext";
 
 const ACCESS_OPTIONS = [
   {
@@ -41,6 +41,8 @@ export default function VisibilityAccessSelector({
   onToggleMember,
 }) {
   const { user } = useAuth();
+  const { members, loading: membersLoading, refreshMembers } =
+    useFamilyMembers();
   const [memberOptions, setMemberOptions] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,11 +50,13 @@ export default function VisibilityAccessSelector({
     let isActive = true;
     const loadMembers = async () => {
       try {
-        const res = await getFamilyMembers();
-        const members = Array.isArray(res?.data) ? res.data : [];
+        let membersList = members;
+        if (!membersList.length && !membersLoading) {
+          membersList = (await refreshMembers()) || [];
+        }
         const filtered = user?.email
-          ? members.filter((member) => member.email !== user.email)
-          : members;
+          ? membersList.filter((member) => member.email !== user.email)
+          : membersList;
         const normalized = filtered.map((member) => ({
           id: member.id,
           name: member.name || member.email?.split("@")[0] || "Member",
@@ -71,7 +75,7 @@ export default function VisibilityAccessSelector({
     return () => {
       isActive = false;
     };
-  }, [user?.email]);
+  }, [members, membersLoading, refreshMembers, user?.email]);
 
   return (
     <div>
