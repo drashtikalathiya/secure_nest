@@ -11,6 +11,7 @@ import { InvitationsModule } from './invitations/invitations.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { PasswordsModule } from './passwords/passwords.module';
 import { DocumentsModule } from './documents/documents.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { DocumentsModule } from './documents/documents.module';
     ContactsModule,
     PasswordsModule,
     DocumentsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

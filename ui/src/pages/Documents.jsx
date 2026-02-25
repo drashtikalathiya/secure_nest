@@ -1,6 +1,5 @@
 import {
   IconArrowLeft,
-  IconFileDescription,
   IconFolder,
   IconLayoutGrid,
   IconList,

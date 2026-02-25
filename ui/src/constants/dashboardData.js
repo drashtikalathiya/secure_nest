@@ -3,6 +3,8 @@ import {
   IconFileText,
   IconUsersGroup,
   IconAddressBook,
+  IconUserPlus,
+  IconUpload,
 } from "@tabler/icons-react";
 
 export const VAULT_SECTIONS = [
@@ -41,5 +43,87 @@ export const VAULT_SECTIONS = [
     accent: "text-blue-400",
     badge: "bg-blue-500/20 text-blue-300",
     to: "/documents",
+  },
+];
+
+export const RECENT_ACTIVITY = [
+  {
+    id: "activity-1",
+    actor: "John Miller",
+    action: "updated the",
+    target: "Home Insurance",
+    meta: "12 minutes ago • Documents",
+    to: "/documents",
+    avatar: "JM",
+    avatarStyle: "bg-sky-500/20 text-sky-200",
+  },
+  {
+    id: "activity-2",
+    actor: "Vault",
+    action: "created a new password for",
+    target: "Netflix Family",
+    meta: "1 hour ago • Passwords",
+    to: "/passwords",
+    avatar: "NV",
+    avatarStyle: "bg-emerald-500/20 text-emerald-200",
+  },
+  {
+    id: "activity-3",
+    actor: "Sarah Miller",
+    action: "added a medical record:",
+    target: "Dental X-Ray",
+    meta: "3 hours ago • Documents",
+    to: "/documents",
+    avatar: "SM",
+    avatarStyle: "bg-indigo-500/20 text-indigo-200",
+  },
+  {
+    id: "activity-4",
+    actor: "You",
+    action: "updated",
+    target: "Grandpa George's emergency contact",
+    meta: "Yesterday • Contacts",
+    to: "/contacts",
+    avatar: "YG",
+    avatarStyle: "bg-amber-500/20 text-amber-200",
+  },
+];
+
+export const QUICK_ACTIONS = [
+  {
+    id: "quick-password",
+    label: "Add New Password",
+    description: "Generate a secure login",
+    to: "/passwords",
+    icon: IconKey,
+    tone: "border-sky-500/40 bg-sky-500/20 hover:bg-sky-500/30",
+    iconTone: "bg-sky-500/30 text-sky-100",
+  },
+  {
+    id: "quick-invite",
+    label: "Invite Member",
+    description: "Add a trusted family member",
+    to: "/members",
+    icon: IconUserPlus,
+    tone: "border-slate-800/80 bg-slate-900/60 hover:bg-slate-900/80",
+    iconTone: "bg-slate-800/80 text-slate-200",
+  },
+  {
+    id: "quick-upload",
+    label: "Upload Document",
+    description: "Scan or drop PDF files",
+    to: "/documents",
+    icon: IconUpload,
+    tone: "border-slate-800/80 bg-slate-900/60 hover:bg-slate-900/80",
+    iconTone: "bg-slate-800/80 text-slate-200",
+  },
+  {
+    id: "quick-contact",
+    label: "Add New Contact ",
+    description: "Add your secure contact",
+    to: "/contacts",
+    icon: IconAddressBook,
+    tone: "border-slate-800/80 bg-slate-900/60 hover:bg-slate-900/80",
+    iconTone: "bg-slate-800/80 text-slate-200",
   },
 ];
