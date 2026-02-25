@@ -6,7 +6,7 @@ import {
   IconPlus,
   IconUpload,
 } from "@tabler/icons-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import ConfirmModal from "../components/common/ConfirmModal";
 import EmptyState from "../components/common/EmptyState";
@@ -93,6 +93,7 @@ export default function Documents() {
   const [folders, setFolders] = useState([]);
   const [recentFiles, setRecentFiles] = useState([]);
   const [selectedFolderId, setSelectedFolderId] = useState(null);
+  const familyMembersRef = useRef([]);
   const [modulePermissions, setModulePermissions] = useState({
     view: true,
     edit: false,
@@ -146,13 +147,38 @@ export default function Documents() {
     }
   };
 
+  const refreshRecentDocuments = useCallback(async (members) => {
+    const sourceMembers = Array.isArray(members)
+      ? members
+      : familyMembersRef.current;
+    if (!Array.isArray(sourceMembers)) return;
+
+    const membersMap = new Map(
+      sourceMembers.map((member) => [
+        member.id,
+        {
+          id: member.id,
+          name: member.name || member.email?.split("@")?.[0] || "Member",
+          photoUrl: member.profile_photo_url || "",
+        },
+      ]),
+    );
+
+    try {
+      const recentRes = await getRecentDocuments(4);
+      const recentData = Array.isArray(recentRes?.data) ? recentRes.data : [];
+      setRecentFiles(toRecentFileItems(recentData, membersMap));
+    } catch {
+      setRecentFiles([]);
+    }
+  }, []);
+
   const loadDocuments = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [documentsRes, membersRes, recentRes] = await Promise.all([
+      const [documentsRes, membersRes] = await Promise.all([
         getDocuments(),
         getFamilyMembers(),
-        getRecentDocuments(4),
       ]);
 
       const documentsData = documentsRes?.data || {};
@@ -166,6 +192,7 @@ export default function Documents() {
       const members = Array.isArray(membersRes?.data) ? membersRes.data : [];
       const me = members.find((member) => member.email === user?.email);
       setCurrentUserId(me?.id || null);
+      familyMembersRef.current = members;
       const membersMap = new Map(
         members.map((member) => [
           member.id,
@@ -176,19 +203,19 @@ export default function Documents() {
           },
         ]),
       );
-      const recentData = Array.isArray(recentRes?.data) ? recentRes.data : [];
-      setRecentFiles(toRecentFileItems(recentData, membersMap));
       setFolders(rawFolders.map((folder) => mapFolder(folder, membersMap)));
+      await refreshRecentDocuments(members);
     } catch (error) {
       setFolders([]);
       setRecentFiles([]);
+      familyMembersRef.current = [];
       setModulePermissions({ view: true, edit: false, delete: false });
       setCurrentUserId(null);
       toast.error(error?.message || "Failed to load documents.");
     } finally {
       setIsLoading(false);
     }
-  }, [user?.email]);
+  }, [refreshRecentDocuments, user?.email]);
 
   useEffect(() => {
     loadDocuments();
@@ -231,9 +258,17 @@ export default function Documents() {
       const updated = response?.data;
       if (updated) {
         setFolders((prev) =>
-          prev.map((folder) =>
-            folder.id === editFolderTarget.id ? mapFolder(updated) : folder,
-          ),
+          prev.map((folder) => {
+            if (folder.id !== editFolderTarget.id) return folder;
+            return {
+              ...folder,
+              name: updated.name || folder.name,
+              visibility: updated.visibility || folder.visibility,
+              sharedWith: Array.isArray(updated.shared_with_user_ids)
+                ? updated.shared_with_user_ids
+                : folder.sharedWith,
+            };
+          }),
         );
       }
       setEditFolderTarget(null);
@@ -308,6 +343,7 @@ export default function Documents() {
             };
           }),
         );
+        refreshRecentDocuments();
       }
       setUploadSliderOpen(false);
       setEditDocumentTarget(null);
@@ -425,6 +461,7 @@ export default function Documents() {
 
       setEditDocumentTarget(null);
       setUploadSliderOpen(false);
+      refreshRecentDocuments();
       toast.success("Document updated");
     } catch (error) {
       toast.error(error?.message || "Failed to update document.");
@@ -464,6 +501,7 @@ export default function Documents() {
       );
 
       setDeleteDocumentTarget(null);
+      refreshRecentDocuments();
       toast.success("Document deleted");
     } catch (error) {
       toast.error(error?.message || "Failed to delete document.");
