@@ -136,6 +136,27 @@ export class DocumentsService {
       }));
   }
 
+  async ensureUserFolder(ownerId: string, user: User): Promise<void> {
+    const existing = await this.folderRepo.findOne({
+      where: { family_owner_id: ownerId, created_by_user_id: user.id },
+    });
+
+    if (existing) return;
+
+    const folderName =
+      user.name || user.email?.split('@')?.[0] || 'Member';
+
+    const folder = this.folderRepo.create({
+      family_owner_id: ownerId,
+      created_by_user_id: user.id,
+      name: folderName,
+      visibility: 'family',
+      shared_with_user_ids: null,
+    });
+
+    await this.folderRepo.save(folder);
+  }
+
   async createFolder(
     firebaseUid: string,
     body: CreateFolderDto,

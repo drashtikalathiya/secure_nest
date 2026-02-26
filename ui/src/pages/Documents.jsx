@@ -61,6 +61,7 @@ function mapDocumentFile(file, memberMap = new Map()) {
 }
 
 function mapFolder(folder, memberMap) {
+  const createdByProfile = memberMap?.get(folder.created_by_user_id) || null;
   return {
     id: folder.id,
     name: folder.name || "Untitled Folder",
@@ -69,6 +70,7 @@ function mapFolder(folder, memberMap) {
       ? folder.shared_with_user_ids
       : [],
     created_by_user_id: folder.created_by_user_id || null,
+    createdByProfile,
     files: Array.isArray(folder.files)
       ? folder.files.map((file) => mapDocumentFile(file, memberMap))
       : [],

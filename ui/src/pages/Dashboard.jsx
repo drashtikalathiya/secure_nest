@@ -196,7 +196,7 @@ export default function Dashboard() {
             </h2>
           </div>
 
-          <div className="divide-y divide-slate-800/80">
+          <div>
             {visibleActivity.map((activity) => (
               <Link
                 key={activity.id}

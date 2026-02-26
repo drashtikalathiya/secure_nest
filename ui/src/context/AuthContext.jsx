@@ -3,6 +3,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../services/firebase";
 import { backendLogin } from "../services/authApi";
 import { clearAuthToken, setAuthToken } from "../services/apiClient";
+import Loader from "../components/common/Loader";
 
 const AuthContext = createContext();
 
@@ -75,7 +76,9 @@ export const AuthProvider = ({ children }) => {
           role: backendUser.role || claims.role || "",
           is_subscribed: resolvedSubscription,
           subscription_plan:
-            backendUser.subscription_plan || claims.subscription_plan || "small",
+            backendUser.subscription_plan ||
+            claims.subscription_plan ||
+            "small",
           family_owner_id: backendUser.family_owner_id || "",
           permission_password_access_level:
             backendUser.permission_password_access_level ||
@@ -97,13 +100,13 @@ export const AuthProvider = ({ children }) => {
               : "none"),
           permission_invite_others: Boolean(
             backendUser.permission_invite_others ??
-              claims.permission_invite_others ??
-              false,
+            claims.permission_invite_others ??
+            false,
           ),
           permission_export_data: Boolean(
             backendUser.permission_export_data ??
-              claims.permission_export_data ??
-              true,
+            claims.permission_export_data ??
+            true,
           ),
         };
 
@@ -172,7 +175,7 @@ export const AuthProvider = ({ children }) => {
         refreshSession: () => refreshSessionRef.current(),
       }}
     >
-      {!loading && children}
+      {loading ? <Loader /> : children}
     </AuthContext.Provider>
   );
 };

@@ -13,6 +13,7 @@ import { InvitationsService } from '../invitations/invitations.service';
 import { getErrorMessage } from '../utils/errorMessage';
 import { CloudinaryService } from '../users/cloudinary.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import { DocumentsService } from '../documents/documents.service';
 import * as nodemailer from 'nodemailer';
 import {
   SUBSCRIPTION_PLANS,
@@ -35,6 +36,7 @@ export class AuthService {
     private readonly invitationsService: InvitationsService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly permissionsService: PermissionsService,
+    private readonly documentsService: DocumentsService,
   ) {}
 
   async uploadSignupProfilePhoto(
@@ -171,6 +173,11 @@ export class AuthService {
 
     user.family_owner_id = user.id;
     await this.userRepo.save(user);
+
+    await this.documentsService.ensureUserFolder(
+      user.family_owner_id || user.id,
+      user,
+    );
 
     return this.buildAuthResponse(user);
   }

@@ -44,7 +44,15 @@ export default function FolderCard({
       ) : null}
 
       <span className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg border bg-slate-500/20 text-sky-300 border-sky-500/60">
-        <IconFolder size={20} />
+        {folder?.createdByProfile?.photoUrl ? (
+          <img
+            src={folder.createdByProfile.photoUrl}
+            alt={`${folder.createdByProfile.name || "Member"} profile`}
+            className="h-full w-full rounded-lg object-cover"
+          />
+        ) : (
+          <IconFolder size={20} />
+        )}
       </span>
       <p className="text-sm font-semibold text-slate-100">{folder.name}</p>
       <p className="mt-1 text-xs text-slate-500">

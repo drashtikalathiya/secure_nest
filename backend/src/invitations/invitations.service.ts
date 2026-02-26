@@ -12,6 +12,7 @@ import * as nodemailer from 'nodemailer';
 import admin from '../../config/firebase-admin';
 import { Invitation } from './invitation.entity';
 import { User } from '../users/user.entity';
+import { DocumentsService } from '../documents/documents.service';
 import { getErrorMessage } from '../utils/errorMessage';
 import { renderInvitationEmailHtml } from '../utils/emailTemplates';
 import { getPlanMemberLimit } from '../billing/subscription-plan';
@@ -35,6 +36,7 @@ export class InvitationsService {
     @InjectRepository(User)
     private userRepo: Repository<User>,
     private permissionsService: PermissionsService,
+    private documentsService: DocumentsService,
   ) {}
 
   async createInvitation(firebaseUid: string, body: CreateInvitationDto) {
@@ -396,6 +398,8 @@ export class InvitationsService {
       family_owner_id: owner.id,
       permission_profile_id: invite.permission_profile_id || null,
     });
+
+    await this.documentsService.ensureUserFolder(owner.id, user);
 
     await this.inviteRepo.update(invite.id, {
       status: 'accepted',
