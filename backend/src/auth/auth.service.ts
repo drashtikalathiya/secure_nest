@@ -14,13 +14,13 @@ import { getErrorMessage } from '../utils/errorMessage';
 import { CloudinaryService } from '../users/cloudinary.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { DocumentsService } from '../documents/documents.service';
-import * as nodemailer from 'nodemailer';
 import {
   SUBSCRIPTION_PLANS,
   USER_ROLES,
   type SubscriptionPlan,
 } from '../utils/constants';
 import { renderPasswordResetEmailHtml } from '../utils/emailTemplates';
+import { createTransporter, escapeHtml, getMailConfig } from '../utils/email';
 import type {
   AuthResponseDto,
   FirebaseUserDto,
@@ -338,44 +338,21 @@ export class AuthService {
     resetLink: string;
     recipientName?: string;
   }) {
-    const host = process.env.MAIL_HOST;
-    const port = Number(process.env.MAIL_PORT || 587);
-    const user = process.env.MAIL_USER;
-    const pass = process.env.MAIL_PASS;
-
-    if (!host || !user || !pass) {
-      throw new InternalServerErrorException(
-        'Email service is not configured.',
-      );
-    }
-
     try {
-      const secure =
-        String(process.env.MAIL_SECURE || 'false').toLowerCase() === 'true';
-      const appName = process.env.MAIL_FROM_NAME || 'SecureNest';
-      const supportEmail =
-        process.env.SUPPORT_EMAIL || process.env.MAIL_FROM || user;
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      const frontendDomain = new URL(frontendUrl).host;
-
-      const transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: { user, pass },
-      });
+      const mail = getMailConfig();
+      const transporter = createTransporter(mail);
 
       await transporter.sendMail({
-        from: `${appName} <${process.env.MAIL_FROM || user}>`,
+        from: `${mail.appName} <${mail.from}>`,
         to: params.recipientEmail,
-        subject: `${appName} password reset`,
+        subject: `${mail.appName} password reset`,
         html: renderPasswordResetEmailHtml({
-          appName,
-          resetLink: this.escapeHtml(params.resetLink),
-          supportEmail: this.escapeHtml(supportEmail),
-          frontendDomain: this.escapeHtml(frontendDomain),
+          appName: mail.appName,
+          resetLink: escapeHtml(params.resetLink),
+          supportEmail: escapeHtml(mail.supportEmail),
+          frontendDomain: escapeHtml(mail.frontendDomain),
           recipientName: params.recipientName
-            ? this.escapeHtml(params.recipientName)
+            ? escapeHtml(params.recipientName)
             : undefined,
         }),
       });
@@ -387,15 +364,6 @@ export class AuthService {
         'Failed to send password reset email.',
       );
     }
-  }
-
-  private escapeHtml(value: string): string {
-    return String(value || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
   }
 
   private validateProfilePhoto(file?: {

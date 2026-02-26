@@ -8,13 +8,13 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
-import * as nodemailer from 'nodemailer';
 import admin from '../../config/firebase-admin';
 import { Invitation } from './invitation.entity';
 import { User } from '../users/user.entity';
 import { DocumentsService } from '../documents/documents.service';
 import { getErrorMessage } from '../utils/errorMessage';
 import { renderInvitationEmailHtml } from '../utils/emailTemplates';
+import { createTransporter, escapeHtml, getMailConfig } from '../utils/email';
 import { getPlanMemberLimit } from '../billing/subscription-plan';
 import { DEFAULT_MEMBER_PERMISSIONS } from '../permissions/permissions.utils';
 import { PermissionsService } from '../permissions/permissions.service';
@@ -489,47 +489,24 @@ export class InvitationsService {
     inviteLink: string;
     expiresAt: Date;
   }) {
-    const host = process.env.MAIL_HOST;
-    const port = Number(process.env.MAIL_PORT || 587);
-    const user = process.env.MAIL_USER;
-    const pass = process.env.MAIL_PASS;
-
-    if (!host || !user || !pass) {
-      throw new InternalServerErrorException(
-        'Email service is not configured.',
-      );
-    }
-
     try {
-      const secure =
-        String(process.env.MAIL_SECURE || 'false').toLowerCase() === 'true';
-      const appName = process.env.MAIL_FROM_NAME || 'SecureNest';
-      const supportEmail =
-        process.env.SUPPORT_EMAIL || process.env.MAIL_FROM || user;
-      const ownerName = this.escapeHtml(params.ownerName);
-      const inviteLink = this.escapeHtml(params.inviteLink);
+      const mail = getMailConfig();
+      const ownerName = escapeHtml(params.ownerName);
+      const inviteLink = escapeHtml(params.inviteLink);
       const expiresAtUtc = params.expiresAt.toUTCString();
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      const frontendDomain = new URL(frontendUrl).host;
-
-      const transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: { user, pass },
-      });
+      const transporter = createTransporter(mail);
 
       await transporter.sendMail({
-        from: `${appName} <${process.env.MAIL_FROM || user}>`,
+        from: `${mail.appName} <${mail.from}>`,
         to: params.inviteeEmail,
-        subject: `${params.ownerName} invited you to ${appName}`,
+        subject: `${params.ownerName} invited you to ${mail.appName}`,
         html: renderInvitationEmailHtml({
-          appName,
+          appName: mail.appName,
           ownerName,
           inviteLink,
           expiresAtUtc,
-          supportEmail: this.escapeHtml(supportEmail),
-          frontendDomain: this.escapeHtml(frontendDomain),
+          supportEmail: escapeHtml(mail.supportEmail),
+          frontendDomain: escapeHtml(mail.frontendDomain),
         }),
       });
     } catch (error) {
@@ -540,14 +517,5 @@ export class InvitationsService {
         'Failed to send invitation email.',
       );
     }
-  }
-
-  private escapeHtml(value: string): string {
-    return String(value || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
   }
 }
