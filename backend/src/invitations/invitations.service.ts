@@ -149,7 +149,7 @@ export class InvitationsService {
       'Only pending invitations can be deleted.',
     );
 
-    await this.inviteRepo.update(invite.id, { status: 'cancelled' });
+    await this.inviteRepo.delete({ id: invite.id });
   }
 
   async validateToken(token: string) {
