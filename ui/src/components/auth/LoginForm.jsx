@@ -2,7 +2,6 @@ import { useState } from "react";
 import { IconMail, IconEye, IconEyeOff, IconLogin2 } from "@tabler/icons-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { firebaseLogin } from "../../services/firebaseAuth";
-import { backendLogin, getPostLoginPath } from "../../services/authApi";
 import { acceptInvitation } from "../../services/invitationsApi";
 import { validateLogin } from "../../utils/validators";
 import toast from "react-hot-toast";
@@ -74,11 +73,8 @@ export default function LoginForm() {
         toast.success("Invitation accepted successfully!");
       }
 
-      const { data } = await backendLogin();
-
       toast.success("User login successfully!");
-
-      navigate(getPostLoginPath(data), { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       handleLoginError(err);
     } finally {

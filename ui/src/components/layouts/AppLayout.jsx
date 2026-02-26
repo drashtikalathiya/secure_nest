@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   IconSearch,
-  IconBell,
+  IconSettings,
   IconShieldLock,
   IconLogout,
   IconMenu2,
@@ -15,9 +15,14 @@ import { useAuth } from "../../context/AuthContext";
 import { canViewModule } from "../../utils/permissions";
 import { clearAuthToken } from "../../services/apiClient";
 
-function BrandBlock({ className = "" }) {
+function BrandBlock({ className = "", onClick }) {
   return (
-    <div className={`flex items-center gap-3 py-3 ${className}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-3 py-3 text-left ${className}`}
+      aria-label="Go to dashboard"
+    >
       <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-500/20 text-sky-300">
         <IconShieldLock size={22} stroke={2} />
       </div>
@@ -25,7 +30,7 @@ function BrandBlock({ className = "" }) {
         <p className="text-sm font-semibold text-white">SecureNest</p>
         <p className="text-xs text-slate-400">Family Security Vault</p>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -92,7 +97,7 @@ export default function AppLayout() {
     <div className="app-shell h-screen bg-background-dark text-slate-100">
       <div className="flex h-screen w-full overflow-hidden">
         <aside className="hidden h-screen w-64 flex-col border-r border-slate-800/70 px-5 py-4 lg:flex lg:w-72">
-          <BrandBlock />
+          <BrandBlock onClick={() => navigate("/dashboard")} />
 
           <div className="mt-7 space-y-2">
             {visibleNavItems.map((item) => (
@@ -124,7 +129,7 @@ export default function AppLayout() {
             />
             <aside className="relative z-50 flex h-full w-72 max-w-[85%] flex-col border-r border-slate-800/70 bg-background-dark px-5 py-4 shadow-2xl">
               <div className="flex items-start justify-between gap-3">
-                <BrandBlock />
+                <BrandBlock onClick={() => navigate("/dashboard")} />
                 <button
                   type="button"
                   onClick={() => setIsSidebarOpen(false)}
@@ -172,22 +177,16 @@ export default function AppLayout() {
                 >
                   <IconMenu2 size={18} />
                 </button>
-                <div className="relative flex w-full max-w-[360px] items-center sm:max-w-[420px] md:w-[320px] lg:w-[420px]">
-                  <IconSearch
-                    size={18}
-                    className="absolute left-4 text-slate-400"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search across all vault items..."
-                    className="w-full rounded-2xl border border-slate-800/70 bg-slate-900/60 py-2.5 pl-11 pr-4 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500/70 focus:outline-none"
-                  />
-                </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-800/80 bg-slate-900/50 text-slate-200">
-                  <IconBell size={18} />
+                <button
+                  type="button"
+                  onClick={() => navigate("/settings")}
+                  aria-label="Open settings"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-sky-500/30 bg-slate-900/50 text-slate-200 transition hover:text-white"
+                >
+                  <IconSettings size={18} />
                 </button>
                 <div className="flex items-center gap-3 px-3 py-2 text-left border-l border-slate-800/80">
                   <div className="hidden md:block">
