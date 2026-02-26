@@ -5,7 +5,6 @@ import {
   IconPencil,
   IconStar,
   IconTrash,
-  IconUser,
 } from "@tabler/icons-react";
 
 import {
