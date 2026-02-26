@@ -24,6 +24,17 @@ export const backendLogin = async () => {
   return data;
 };
 
+export const backendForgotPassword = async (email) => {
+  const { data } = await axiosInstance.post(
+    "/auth/forgot-password",
+    { email },
+    {
+      meta: { fallbackMessage: "Failed to send reset link" },
+    },
+  );
+  return data;
+};
+
 export const getPostLoginPath = (authData) => {
   const role = authData?.role;
   const isSubscribed = Boolean(authData?.is_subscribed);

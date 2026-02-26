@@ -12,7 +12,11 @@ import { FirebaseAuthGuard } from './firebase-auth.guard';
 import { AuthService } from './auth.service';
 import { sendSuccess, sendError } from '../utils/responseHandler';
 import { getErrorMessage } from '../utils/errorMessage';
-import type { AuthenticatedRequest, RegisterUserDto } from './dto/auth.dto';
+import type {
+  AuthenticatedRequest,
+  ForgotPasswordDto,
+  RegisterUserDto,
+} from './dto/auth.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -93,6 +97,19 @@ export class AuthController {
     } catch (error) {
       return sendError(
         'Failed to upload profile photo',
+        getErrorMessage(error),
+      );
+    }
+  }
+
+  @Post('forgot-password')
+  async forgotPassword(@Body() body: ForgotPasswordDto) {
+    try {
+      await this.authService.requestPasswordReset(body);
+      return sendSuccess('Reset link sent.');
+    } catch (error) {
+      return sendError(
+        'Failed to send reset link',
         getErrorMessage(error),
       );
     }

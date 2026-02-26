@@ -13,14 +13,17 @@ import { InvitationsService } from '../invitations/invitations.service';
 import { getErrorMessage } from '../utils/errorMessage';
 import { CloudinaryService } from '../users/cloudinary.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import * as nodemailer from 'nodemailer';
 import {
   SUBSCRIPTION_PLANS,
   USER_ROLES,
   type SubscriptionPlan,
 } from '../utils/constants';
+import { renderPasswordResetEmailHtml } from '../utils/emailTemplates';
 import type {
   AuthResponseDto,
   FirebaseUserDto,
+  ForgotPasswordDto,
   RegisterUserDto,
 } from './dto/auth.dto';
 
@@ -106,6 +109,46 @@ export class AuthService {
     return inviteToken
       ? this.registerMember(uid, email, body?.name, inviteToken, photoUrl)
       : this.registerOwner(uid, email, body?.name, photoUrl);
+  }
+
+  async requestPasswordReset(body: ForgotPasswordDto): Promise<void> {
+    const email = typeof body?.email === 'string' ? body.email.trim() : '';
+    if (!email) {
+      throw new BadRequestException('Email is required.');
+    }
+
+    const user = await this.userRepo.findOne({
+      where: { email: email.toLowerCase() },
+    });
+
+    if (!user) {
+      throw new NotFoundException('No account found with that email.');
+    }
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const firebaseResetLink = await admin
+      .auth()
+      .generatePasswordResetLink(email, {
+        url: `${frontendUrl}/reset-password`,
+      });
+
+    const resetUrl = new URL(firebaseResetLink);
+    const oobCode = resetUrl.searchParams.get('oobCode');
+    if (!oobCode) {
+      throw new InternalServerErrorException(
+        'Failed to generate password reset link.',
+      );
+    }
+
+    const resetLink = `${frontendUrl}/reset-password?oobCode=${encodeURIComponent(
+      oobCode,
+    )}`;
+
+    await this.sendPasswordResetEmail({
+      recipientEmail: email,
+      recipientName: user.name || undefined,
+      resetLink,
+    });
   }
 
   private async registerOwner(
@@ -281,6 +324,71 @@ export class AuthService {
         message: getErrorMessage(error),
       });
     }
+  }
+
+  private async sendPasswordResetEmail(params: {
+    recipientEmail: string;
+    resetLink: string;
+    recipientName?: string;
+  }) {
+    const host = process.env.MAIL_HOST;
+    const port = Number(process.env.MAIL_PORT || 587);
+    const user = process.env.MAIL_USER;
+    const pass = process.env.MAIL_PASS;
+
+    if (!host || !user || !pass) {
+      throw new InternalServerErrorException(
+        'Email service is not configured.',
+      );
+    }
+
+    try {
+      const secure =
+        String(process.env.MAIL_SECURE || 'false').toLowerCase() === 'true';
+      const appName = process.env.MAIL_FROM_NAME || 'SecureNest';
+      const supportEmail =
+        process.env.SUPPORT_EMAIL || process.env.MAIL_FROM || user;
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const frontendDomain = new URL(frontendUrl).host;
+
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure,
+        auth: { user, pass },
+      });
+
+      await transporter.sendMail({
+        from: `${appName} <${process.env.MAIL_FROM || user}>`,
+        to: params.recipientEmail,
+        subject: `${appName} password reset`,
+        html: renderPasswordResetEmailHtml({
+          appName,
+          resetLink: this.escapeHtml(params.resetLink),
+          supportEmail: this.escapeHtml(supportEmail),
+          frontendDomain: this.escapeHtml(frontendDomain),
+          recipientName: params.recipientName
+            ? this.escapeHtml(params.recipientName)
+            : undefined,
+        }),
+      });
+    } catch (error) {
+      console.error('Password reset email send failed:', {
+        message: getErrorMessage(error),
+      });
+      throw new InternalServerErrorException(
+        'Failed to send password reset email.',
+      );
+    }
+  }
+
+  private escapeHtml(value: string): string {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   private validateProfilePhoto(file?: {

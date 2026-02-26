@@ -6,6 +6,7 @@ import {
   signInWithEmailAndPassword,
   updatePassword,
   updateProfile,
+  confirmPasswordReset,
 } from "firebase/auth";
 import { auth } from "./firebase";
 
@@ -37,4 +38,8 @@ export const changeFirebasePassword = async (currentPassword, newPassword) => {
   const credential = EmailAuthProvider.credential(user.email, currentPassword);
   await reauthenticateWithCredential(user, credential);
   await updatePassword(user, newPassword);
+};
+
+export const firebaseConfirmPasswordReset = async (oobCode, newPassword) => {
+  await confirmPasswordReset(auth, oobCode, newPassword);
 };

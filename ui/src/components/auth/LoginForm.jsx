@@ -114,7 +114,7 @@ export default function LoginForm() {
                 setEmail(e.target.value);
                 clearFieldError("email");
               }}
-              className="w-full h-11 pr-10 px-4 rounded-md bg-[#121a28] border border-[#1f2a3a] focus:ring-2 focus:ring-primary"
+              className="h-12 w-full rounded-xl border border-primary/30 bg-[#121a28] px-4 pr-10 text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary/60"
             />
           </div>
           {error.email && (
@@ -123,7 +123,16 @@ export default function LoginForm() {
         </div>
 
         <div>
-          <label className="text-sm text-gray-400">Password</label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm text-gray-400">Password</label>
+            <button
+              type="button"
+              onClick={() => navigate("/forgot-password")}
+              className="text-xs font-semibold text-primary hover:text-primary/85"
+            >
+              Forgot password?
+            </button>
+          </div>
           <div className="relative mt-1">
             <input
               type={showPassword ? "text" : "password"}
@@ -134,7 +143,7 @@ export default function LoginForm() {
                 setPassword(e.target.value);
                 clearFieldError("password");
               }}
-              className="w-full h-11 pr-10 px-4 rounded-md bg-[#121a28] border border-[#1f2a3a] focus:ring-2 focus:ring-primary"
+              className="h-12 w-full rounded-xl border border-primary/30 bg-[#121a28] px-4 pr-10 text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary/60"
             />
             <button
               type="button"

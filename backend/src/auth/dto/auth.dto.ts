@@ -16,6 +16,10 @@ export type RegisterUserDto = {
   photo_url?: string | null;
 };
 
+export type ForgotPasswordDto = {
+  email: string;
+};
+
 export type AuthResponseDto = {
   id: string;
   email: string;

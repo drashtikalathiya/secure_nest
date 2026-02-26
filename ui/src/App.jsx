@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import LoginForm from "./components/auth/LoginForm";
 import SignupForm from "./components/auth/SignupForm";
+import ForgotPasswordForm from "./components/auth/ForgotPasswordForm";
+import ResetPasswordForm from "./components/auth/ResetPasswordForm";
+import ResetPasswordSuccess from "./components/auth/ResetPasswordSuccess";
 import {
   PermissionRoute,
   ProtectedRoute,
@@ -34,6 +37,9 @@ export default function App() {
         >
           <Route path="/login" element={<LoginForm />} />
           <Route path="/signup" element={<SignupForm />} />
+          <Route path="/forgot-password" element={<ForgotPasswordForm />} />
+          <Route path="/reset-password" element={<ResetPasswordForm />} />
+          <Route path="/reset-success" element={<ResetPasswordSuccess />} />
         </Route>
         <Route
           path="/invite/accept"

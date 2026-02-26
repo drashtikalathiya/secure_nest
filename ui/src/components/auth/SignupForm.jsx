@@ -234,7 +234,7 @@ export default function SignupForm() {
                 setFullName(e.target.value);
                 clearFieldError("fullName");
               }}
-              className="w-full h-11 pr-10 px-4 rounded-md bg-[#121a28] border border-[#1f2a3a] focus:ring-2 focus:ring-primary"
+              className="h-12 w-full rounded-xl border border-primary/30 bg-[#121a28] px-4 pr-10 text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary/60"
             />
           </div>
           {error.fullName && (
@@ -259,7 +259,7 @@ export default function SignupForm() {
                 setEmail(e.target.value);
                 clearFieldError("email");
               }}
-              className="w-full h-11 pr-10 px-4 rounded-md bg-[#121a28] border border-[#1f2a3a] focus:ring-2 focus:ring-primary"
+              className="h-12 w-full rounded-xl border border-primary/30 bg-[#121a28] px-4 pr-10 text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary/60"
             />
           </div>
           {error.email && (
@@ -279,7 +279,7 @@ export default function SignupForm() {
                 setPassword(e.target.value);
                 clearFieldError("password");
               }}
-              className="w-full h-11 pr-10 px-4 rounded-md bg-[#121a28] border border-[#1f2a3a] focus:ring-2 focus:ring-primary"
+              className="h-12 w-full rounded-xl border border-primary/30 bg-[#121a28] px-4 pr-10 text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary/60"
             />
             <button
               type="button"
@@ -306,7 +306,7 @@ export default function SignupForm() {
                 setConfirmPassword(e.target.value);
                 clearFieldError("confirmPassword");
               }}
-              className="w-full h-11 pr-10 px-4 rounded-md bg-[#121a28] border border-[#1f2a3a] focus:ring-2 focus:ring-primary"
+              className="h-12 w-full rounded-xl border border-primary/30 bg-[#121a28] px-4 pr-10 text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary/60"
             />
             <button
               type="button"

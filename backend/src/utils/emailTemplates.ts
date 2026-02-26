@@ -103,3 +103,57 @@ export const renderInvitationEmailHtml = (
     </div>
   `;
 };
+
+type PasswordResetEmailTemplateParams = {
+  appName: string;
+  resetLink: string;
+  supportEmail: string;
+  frontendDomain: string;
+  recipientName?: string;
+};
+
+export const renderPasswordResetEmailHtml = (
+  params: PasswordResetEmailTemplateParams,
+): string => {
+  const greeting = params.recipientName
+    ? `Hi ${params.recipientName},`
+    : 'Hello,';
+
+  return `
+    <div style="margin:0;padding:20px 10px;background:#f3f6fb;font-family:Arial,sans-serif;color:#0f172a;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;margin:0 auto;border:1px solid #dbe5f0;border-radius:6px;overflow:hidden;background:#ffffff;">
+        <tr>
+          ${renderSecureNestBrandTd({
+            brandName: params.appName,
+            brandTagline: 'Family Security Vault',
+          })}
+        </tr>
+        <tr>
+          <td style="padding:24px 24px 18px 24px;background:#ffffff;">
+            <p style="margin:0 0 8px 0;font-size:18px;font-weight:600;color:#1e293b;">
+              ${greeting}
+            </p>
+            <p style="margin:0 0 18px 0;font-size:15px;line-height:1.6;color:#475569;">
+              We received a request to reset your ${params.appName} password. Click the button below to create a new password.
+            </p>
+            <p style="margin:0 0 18px 0;text-align:center;">
+              <a href="${params.resetLink}" style="display:inline-block;background:#1f56cf;color:#ffffff;text-decoration:none;font-weight:700;font-size:16px;padding:10px 18px;border-radius:6px;">
+                Reset Password
+              </a>
+            </p>
+            <p style="margin:0;font-size:13px;line-height:1.6;color:#64748b;">
+              If you did not request this, you can safely ignore this email.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f8fafc;border-top:1px solid #dbe5f0;padding:14px 18px 18px 18px;text-align:center;">
+            <p style="margin:0;font-size:10px;line-height:1.5;color:#64748b;">
+              Need help? <a href="mailto:${params.supportEmail}" style="color:#1f56cf;text-decoration:none;">${params.supportEmail}</a> &nbsp;|&nbsp; Trust only links on ${params.frontendDomain}
+            </p>
+          </td>
+        </tr>
+      </table>
+    </div>
+  `;
+};
