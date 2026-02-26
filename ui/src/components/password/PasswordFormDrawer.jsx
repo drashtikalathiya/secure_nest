@@ -110,6 +110,7 @@ export default function PasswordFormDrawer({
           <input
             value={form.value}
             onChange={onChange("value")}
+            autoComplete="username"
             placeholder="username@example.com / user_name"
             className="mt-2 w-full rounded-xl border border-slate-800/80 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500/60 focus:outline-none"
           />
@@ -126,6 +127,7 @@ export default function PasswordFormDrawer({
               value={form.password}
               onChange={onChange("password")}
               type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
               className="w-full rounded-xl border border-slate-800/80 bg-slate-900/70 px-4 py-2.5 pr-10 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500/60 focus:outline-none"
             />
             <button

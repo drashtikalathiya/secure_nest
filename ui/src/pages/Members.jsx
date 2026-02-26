@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import ConfirmModal from "../components/common/ConfirmModal";
 import PageHeader from "../components/common/PageHeader";
 import MemberPermissionsFields from "../components/members/MemberPermissionsFields";
+import Spinner from "../components/common/Spinner";
 import { useAuth } from "../context/AuthContext";
 import { useFamilyMembers } from "../context/FamilyMembersContext";
 import {
@@ -17,7 +18,10 @@ import {
   getPendingInvitations,
   resendInvitation,
 } from "../services/invitationsApi";
-import { deleteFamilyMember, updateMemberPermissions } from "../services/usersApi";
+import {
+  deleteFamilyMember,
+  updateMemberPermissions,
+} from "../services/usersApi";
 import { PAGE_META } from "../constants/pageMeta";
 
 const ROLE_STYLES = {
@@ -206,7 +210,9 @@ export default function Members() {
         isOwner ? getPendingInvitations() : Promise.resolve({ data: [] }),
       ]);
 
-      setMembers(Array.isArray(membersRes) ? membersRes : membersRes?.data || []);
+      setMembers(
+        Array.isArray(membersRes) ? membersRes : membersRes?.data || [],
+      );
       setPendingInvites(invitesRes?.data || []);
     } catch (error) {
       toast.error(error?.message || "Failed to load members.");
@@ -397,8 +403,10 @@ export default function Members() {
         </div>
 
         {loading ? (
-          <div className="px-4 py-5 text-sm text-slate-400">
-            Loading members...
+          <div className="px-4 py-10 text-slate-400">
+            <div className="flex items-center justify-center">
+              <Spinner size={30} />
+            </div>
           </div>
         ) : filteredActiveMembers.length === 0 ? (
           <div className="px-4 py-5 text-sm text-slate-400">
@@ -479,8 +487,10 @@ export default function Members() {
         </div>
 
         {loading ? (
-          <div className="rounded-xl border border-slate-800/80 bg-slate-900/60 px-4 py-5 text-sm text-slate-400">
-            Loading members...
+          <div className="rounded-xl border border-slate-800/80 bg-slate-900/60 px-4 py-8 text-slate-400">
+            <div className="flex items-center justify-center">
+              <Spinner size={30} />
+            </div>
           </div>
         ) : filteredActiveMembers.length === 0 ? (
           <div className="rounded-xl border border-slate-800/80 bg-slate-900/60 px-4 py-5 text-sm text-slate-400">

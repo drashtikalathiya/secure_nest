@@ -25,6 +25,7 @@ import {
   updatePassword,
 } from "../services/passwordsApi";
 import { PAGE_META } from "../constants/pageMeta";
+import Spinner from "../components/common/Spinner";
 
 const getRowKey = (item) => item.id || `${item.name}-${item.value}`;
 
@@ -45,8 +46,11 @@ const toPasswordItem = (record) => ({
 
 export default function Passwords() {
   const { user } = useAuth();
-  const { members, loading: membersLoading, refreshMembers } =
-    useFamilyMembers();
+  const {
+    members,
+    loading: membersLoading,
+    refreshMembers,
+  } = useFamilyMembers();
 
   const [cards, setCards] = useState([]);
   const [revealed, setRevealed] = useState({});
@@ -344,8 +348,10 @@ export default function Passwords() {
           </div>
 
           {loading ? (
-            <div className="rounded-xl border border-slate-800/70 bg-slate-900/40 px-4 py-10 text-center text-sm text-slate-500">
-              Loading passwords...
+            <div className="px-4 py-10 text-slate-400">
+              <div className="flex items-center justify-center">
+                <Spinner size={30} />
+              </div>
             </div>
           ) : (
             <>

@@ -19,6 +19,7 @@ import {
   updateContact,
 } from "../services/contactsApi";
 import { PAGE_META } from "../constants/pageMeta";
+import Spinner from "../components/common/Spinner";
 
 const emptyNewContactForm = {
   name: "",
@@ -37,8 +38,11 @@ const toPhoneDigits = (value) =>
 
 export default function Contacts() {
   const { user } = useAuth();
-  const { members, loading: membersLoading, refreshMembers } =
-    useFamilyMembers();
+  const {
+    members,
+    loading: membersLoading,
+    refreshMembers,
+  } = useFamilyMembers();
 
   const [search, setSearch] = useState("");
   const [allContacts, setAllContacts] = useState([]);
@@ -243,8 +247,10 @@ export default function Contacts() {
         </div>
 
         {isLoading ? (
-          <div className="rounded-2xl border border-slate-800/80 bg-slate-900/50 p-5 text-sm text-slate-400 mt-4">
-            Loading contacts...
+          <div className="px-4 py-10 text-slate-400">
+            <div className="flex items-center justify-center">
+              <Spinner size={30} />
+            </div>
           </div>
         ) : null}
 

@@ -36,6 +36,7 @@ import {
   updateFolder,
   updateDocument,
 } from "../services/documentsApi";
+import Spinner from "../components/common/Spinner";
 
 function mapDocumentFile(file, memberMap = new Map()) {
   const fileUrl = file.file_url || file.url || "";
@@ -91,8 +92,11 @@ function toRecentFileItems(recentDocuments, memberMap) {
 
 export default function Documents() {
   const { user } = useAuth();
-  const { members, loading: membersLoading, refreshMembers } =
-    useFamilyMembers();
+  const {
+    members,
+    loading: membersLoading,
+    refreshMembers,
+  } = useFamilyMembers();
   const [currentUserId, setCurrentUserId] = useState(null);
   const [folders, setFolders] = useState([]);
   const [recentFiles, setRecentFiles] = useState([]);
@@ -150,31 +154,34 @@ export default function Documents() {
     }
   };
 
-  const refreshRecentDocuments = useCallback(async (membersInput) => {
-    const sourceMembers = Array.isArray(membersInput)
-      ? membersInput
-      : members;
-    if (!Array.isArray(sourceMembers)) return;
+  const refreshRecentDocuments = useCallback(
+    async (membersInput) => {
+      const sourceMembers = Array.isArray(membersInput)
+        ? membersInput
+        : members;
+      if (!Array.isArray(sourceMembers)) return;
 
-    const membersMap = new Map(
-      sourceMembers.map((member) => [
-        member.id,
-        {
-          id: member.id,
-          name: member.name || member.email?.split("@")?.[0] || "Member",
-          photoUrl: member.profile_photo_url || "",
-        },
-      ]),
-    );
+      const membersMap = new Map(
+        sourceMembers.map((member) => [
+          member.id,
+          {
+            id: member.id,
+            name: member.name || member.email?.split("@")?.[0] || "Member",
+            photoUrl: member.profile_photo_url || "",
+          },
+        ]),
+      );
 
-    try {
-      const recentRes = await getRecentDocuments(4);
-      const recentData = Array.isArray(recentRes?.data) ? recentRes.data : [];
-      setRecentFiles(toRecentFileItems(recentData, membersMap));
-    } catch {
-      setRecentFiles([]);
-    }
-  }, [members]);
+      try {
+        const recentRes = await getRecentDocuments(4);
+        const recentData = Array.isArray(recentRes?.data) ? recentRes.data : [];
+        setRecentFiles(toRecentFileItems(recentData, membersMap));
+      } catch {
+        setRecentFiles([]);
+      }
+    },
+    [members],
+  );
 
   const loadDocuments = useCallback(async () => {
     setIsLoading(true);
@@ -740,8 +747,10 @@ export default function Documents() {
               ) : null}
             </div>
             {isLoading ? (
-              <div className="rounded-xl border border-slate-800/80 bg-slate-900/40 p-6 text-sm text-slate-400">
-                Loading folders...
+              <div className="px-4 py-10 text-slate-400">
+                <div className="flex items-center justify-center">
+                  <Spinner size={30} />
+                </div>
               </div>
             ) : folders.length ? (
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

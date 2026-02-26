@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import PageHeader from "../components/common/PageHeader";
+import Spinner from "../components/common/Spinner";
 import {
   QUICK_ACTIONS,
   MODULE_LABELS,
@@ -55,6 +56,7 @@ export default function Dashboard() {
   });
 
   const [activity, setActivity] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(true);
 
   const canAccess = useCallback(
     (route) => {
@@ -93,6 +95,7 @@ export default function Dashboard() {
     let mounted = true;
 
     (async () => {
+      setActivityLoading(true);
       try {
         const [overviewRes, activityRes] = await Promise.all([
           getDashboardOverview(),
@@ -137,6 +140,8 @@ export default function Dashboard() {
           documents: 0,
         });
         setActivity([]);
+      } finally {
+        if (mounted) setActivityLoading(false);
       }
     })();
 
@@ -197,36 +202,46 @@ export default function Dashboard() {
           </div>
 
           <div className="divide-y divide-slate-800/80">
-            {visibleActivity.map((activity) => (
-              <Link
-                key={activity.id}
-                to={activity.to}
-                className="flex items-center gap-3 px-5 py-4 hover:bg-slate-900/60"
-              >
-                <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-full ${activity.avatarStyle}`}
+            {activityLoading ? (
+              <div className="px-5 py-10 flex items-center justify-center">
+                <Spinner size={30} />
+              </div>
+            ) : visibleActivity.length === 0 ? (
+              <div className="px-5 py-6 text-sm text-slate-400">
+                No recent activity found.
+              </div>
+            ) : (
+              visibleActivity.map((activity) => (
+                <Link
+                  key={activity.id}
+                  to={activity.to}
+                  className="flex items-center gap-3 px-5 py-4 hover:bg-slate-900/60"
                 >
-                  <span className="text-xs font-semibold">
-                    {activity.avatar}
-                  </span>
-                </div>
-
-                <div className="flex-1">
-                  <p className="text-sm text-slate-200">
-                    <span className="font-semibold text-white">
-                      {activity.user}
-                    </span>{" "}
-                    {activity.action}{" "}
-                    <span className="font-semibold text-sky-200">
-                      {activity.target}
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-full ${activity.avatarStyle}`}
+                  >
+                    <span className="text-xs font-semibold">
+                      {activity.avatar}
                     </span>
-                  </p>
-                  <p className="text-xs text-slate-500">{activity.meta}</p>
-                </div>
+                  </div>
 
-                <IconChevronRight size={16} />
-              </Link>
-            ))}
+                  <div className="flex-1">
+                    <p className="text-sm text-slate-200">
+                      <span className="font-semibold text-white">
+                        {activity.user}
+                      </span>{" "}
+                      {activity.action}{" "}
+                      <span className="font-semibold text-sky-200">
+                        {activity.target}
+                      </span>
+                    </p>
+                    <p className="text-xs text-slate-500">{activity.meta}</p>
+                  </div>
+
+                  <IconChevronRight size={16} />
+                </Link>
+              ))
+            )}
           </div>
         </div>
 
