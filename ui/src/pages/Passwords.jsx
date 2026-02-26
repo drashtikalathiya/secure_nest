@@ -389,6 +389,7 @@ export default function Passwords() {
                     title="No passwords found"
                     description="Save logins, secure notes, and credentials for your family. Everything stays end-to-end encrypted."
                     actionLabel="Add Password"
+                    canAction={canEditPasswords}
                     onAction={() => setIsAddOpen(true)}
                   />
                 )}
@@ -434,6 +435,7 @@ export default function Passwords() {
                     title="No passwords found"
                     description="Save logins, secure notes, and credentials for your family. Everything stays end-to-end encrypted."
                     actionLabel="Add Password"
+                    canAction={canEditPasswords}
                     onAction={() => setIsAddOpen(true)}
                   />
                 )}

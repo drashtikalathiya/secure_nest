@@ -764,6 +764,7 @@ export default function Documents() {
                 title="No folders yet"
                 description="Organize family files into folders so they are easy to find and share."
                 actionLabel="Create Folder"
+                canAction={canEditDocuments}
                 onAction={() => {
                   setEditFolderTarget(null);
                   setCreateFolderOpen(true);

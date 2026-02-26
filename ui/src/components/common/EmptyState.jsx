@@ -6,6 +6,7 @@ export default function EmptyState({
   description,
   actionLabel,
   onAction,
+  canAction = true,
   className = "",
 }) {
   return (
@@ -24,7 +25,7 @@ export default function EmptyState({
       {description ? (
         <p className="mt-2 max-w-md text-sm text-slate-400">{description}</p>
       ) : null}
-      {actionLabel && onAction ? (
+      {canAction && actionLabel && onAction ? (
         <button
           type="button"
           onClick={onAction}

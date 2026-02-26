@@ -278,6 +278,7 @@ export default function Contacts() {
               title="No contacts found"
               description="Store family contacts, emergency numbers, and trusted advisors in one secure place."
               actionLabel="Add Contact"
+              canAction={canEditContacts}
               onAction={() => setIsFormOpen(true)}
               className="md:col-span-3 xl:col-span-4"
             />

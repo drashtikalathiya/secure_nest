@@ -72,17 +72,17 @@ const normalizeMember = (member) => {
 const getMemberKey = (member) => member.id || member.email;
 
 const getDefaultPermissions = (role) => ({
-  passwordAccess: role === "Owner" ? "edit" : "view",
-  contactsAccess: role === "Owner" ? "edit" : "view",
-  documentsAccess: role === "Owner" ? "edit" : "view",
+  passwordAccess: "edit",
+  contactsAccess: "edit",
+  documentsAccess: "edit",
   inviteOthers: role === "Owner",
   exportData: true,
 });
 
 const getInviteDefaultPermissions = () => ({
-  passwordAccess: "view",
-  contactsAccess: "view",
-  documentsAccess: "view",
+  passwordAccess: "edit",
+  contactsAccess: "edit",
+  documentsAccess: "edit",
   inviteOthers: false,
   exportData: true,
 });
@@ -142,9 +142,9 @@ export default function Members() {
 
   const [permissions, setPermissions] = useState({});
   const [permissionDraft, setPermissionDraft] = useState({
-    passwordAccess: "view",
-    contactsAccess: "view",
-    documentsAccess: "view",
+    passwordAccess: "edit",
+    contactsAccess: "edit",
+    documentsAccess: "edit",
     inviteOthers: false,
     exportData: true,
   });
