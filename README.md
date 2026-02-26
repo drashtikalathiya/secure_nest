@@ -20,6 +20,9 @@ SecureNest is a full‑stack family security vault with authentication, document
 - Node.js (LTS recommended)
 - npm
 - PostgreSQL
+- Firebase project (client + Admin SDK)
+- SMTP provider (email)
+- Stripe account (billing)
 
 **Quick Start**
 
@@ -100,3 +103,14 @@ cd backend && npm run build
 # frontend
 cd ../ui && npm run build
 ```
+
+## Security Notes
+
+- Ensure all private endpoints are protected with FirebaseAuthGuard.
+- Use a secrets manager in production (avoid committing `.env`).
+
+## Troubleshooting
+
+- **Firebase errors:** verify all `REACT_APP_FIREBASE_*` and Admin SDK keys.
+- **DB connection failed:** verify `DB_*` and that PostgreSQL is running.
+- **Email not sending:** verify `MAIL_*` and SMTP access/credentials.

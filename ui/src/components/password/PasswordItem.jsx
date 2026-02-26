@@ -98,14 +98,6 @@ export default function PasswordItem({
         </div>
 
         <div className="flex items-center gap-1 text-slate-500">
-          <button
-            type="button"
-            onClick={onToggleFavorite}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-amber-400 hover:bg-amber-500/10 hover:text-amber-300"
-            aria-label="Favorite"
-          >
-            <IconStar size={16} fill={isFavorite ? "currentColor" : "none"} />
-          </button>
           {canEdit ? (
             <button
               type="button"
@@ -126,6 +118,14 @@ export default function PasswordItem({
               <IconTrash size={16} />
             </button>
           ) : null}
+          <button
+            type="button"
+            onClick={onToggleFavorite}
+            className="flex h-8 w-8 items-center justify-center rounded-md text-amber-400 hover:bg-amber-500/10 hover:text-amber-300"
+            aria-label="Favorite"
+          >
+            <IconStar size={16} fill={isFavorite ? "currentColor" : "none"} />
+          </button>
         </div>
       </div>
     );
@@ -191,13 +191,6 @@ export default function PasswordItem({
           aria-label="Favorite"
         >
           <IconStar size={14} fill={isFavorite ? "currentColor" : "none"} />
-        </button>
-        <button
-          type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-800/80 hover:text-white"
-          aria-label="Owner"
-        >
-          <IconUser size={14} />
         </button>
         {canEdit ? (
           <button

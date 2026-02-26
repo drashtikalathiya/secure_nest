@@ -41,8 +41,11 @@ export default function VisibilityAccessSelector({
   onToggleMember,
 }) {
   const { user } = useAuth();
-  const { members, loading: membersLoading, refreshMembers } =
-    useFamilyMembers();
+  const {
+    members,
+    loading: membersLoading,
+    refreshMembers,
+  } = useFamilyMembers();
   const [memberOptions, setMemberOptions] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -118,7 +121,7 @@ export default function VisibilityAccessSelector({
       </div>
 
       <div className="mt-3 overflow-hidden rounded-xl border border-slate-800/70 bg-slate-900/50">
-        <p className="border-b border-slate-800/70 px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        <p className="border-b border-slate-800/70 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           Select Family Members
         </p>
         <div>
@@ -169,7 +172,9 @@ export default function VisibilityAccessSelector({
 
           {memberOptions.length === 0 ? (
             <div className="px-3 py-3 text-[11px] text-slate-500">
-              {loading ? "Loading family members..." : "No family members found."}
+              {loading
+                ? "Loading family members..."
+                : "No family members found."}
             </div>
           ) : null}
         </div>

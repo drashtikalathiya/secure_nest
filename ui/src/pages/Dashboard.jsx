@@ -188,7 +188,7 @@ export default function Dashboard() {
         })}
       </section>
 
-      <section className="my-6 grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <section className="my-6 grid gap-4 items-start lg:grid-cols-[2fr_1fr]">
         <div className="rounded-2xl border border-slate-800/80 bg-dashboard-card">
           <div className="border-b border-slate-800/80 px-5 py-4">
             <h2 className="text-sm font-semibold text-white">
@@ -196,7 +196,7 @@ export default function Dashboard() {
             </h2>
           </div>
 
-          <div>
+          <div className="divide-y divide-slate-800/80">
             {visibleActivity.map((activity) => (
               <Link
                 key={activity.id}

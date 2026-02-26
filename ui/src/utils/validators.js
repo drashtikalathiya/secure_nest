@@ -10,6 +10,30 @@ export const isStrongPassword = (password) => {
   );
 };
 
+const PASSWORD_RULE_MESSAGE =
+  "Password must be at least 6 characters, include 1 capital letter and 1 special character";
+
+const requireField = (value, message) => {
+  if (!String(value || "").trim()) {
+    return message;
+  }
+  return null;
+};
+
+const validatePasswordField = (password) => {
+  const missing = requireField(password, "Password is required");
+  if (missing) return missing;
+  if (!isStrongPassword(password)) return PASSWORD_RULE_MESSAGE;
+  return null;
+};
+
+const validateEmailField = (email) => {
+  const missing = requireField(email, "Email is required");
+  if (missing) return missing;
+  if (!isValidEmail(email)) return "Enter a valid email address";
+  return null;
+};
+
 export const validateSignup = ({
   fullName,
   email,
@@ -18,25 +42,21 @@ export const validateSignup = ({
 }) => {
   const errors = {};
 
-  if (!fullName.trim()) {
-    errors.fullName = "Full name is required";
-  }
+  const nameError = requireField(fullName, "Full name is required");
+  if (nameError) errors.fullName = nameError;
 
-  if (!email.trim()) {
-    errors.email = "Email is required";
-  } else if (!isValidEmail(email)) {
-    errors.email = "Enter a valid email address";
-  }
+  const emailError = validateEmailField(email);
+  if (emailError) errors.email = emailError;
 
-  if (!password.trim()) {
-    errors.password = "Password is required";
-  } else if (!isStrongPassword(password)) {
-    errors.password =
-      "Password must be at least 6 characters, include 1 capital letter and 1 special character";
-  }
+  const passwordError = validatePasswordField(password);
+  if (passwordError) errors.password = passwordError;
 
-  if (!confirmPassword.trim()) {
-    errors.confirmPassword = "Confirm password is required";
+  const confirmError = requireField(
+    confirmPassword,
+    "Confirm password is required",
+  );
+  if (confirmError) {
+    errors.confirmPassword = confirmError;
   } else if (password !== confirmPassword) {
     errors.confirmPassword = "Passwords do not match";
   }
@@ -47,17 +67,29 @@ export const validateSignup = ({
 export const validateLogin = ({ email, password }) => {
   const errors = {};
 
-  if (!email.trim()) {
-    errors.email = "Email is required";
-  } else if (!isValidEmail(email)) {
-    errors.email = "Enter a valid email address";
-  }
+  const emailError = validateEmailField(email);
+  if (emailError) errors.email = emailError;
 
-  if (!password.trim()) {
-    errors.password = "Password is required";
-  } else if (!isStrongPassword(password)) {
-    errors.password =
-      "Password must be at least 6 characters, include 1 capital letter and 1 special character";
+  const passwordError = validatePasswordField(password);
+  if (passwordError) errors.password = passwordError;
+
+  return errors;
+};
+
+export const validateResetPassword = ({ password, confirmPassword }) => {
+  const errors = {};
+
+  const passwordError = validatePasswordField(password);
+  if (passwordError) errors.password = passwordError;
+
+  const confirmError = requireField(
+    confirmPassword,
+    "Confirm password is required",
+  );
+  if (confirmError) {
+    errors.confirmPassword = confirmError;
+  } else if (password !== confirmPassword) {
+    errors.confirmPassword = "Passwords do not match";
   }
 
   return errors;

@@ -8,3 +8,10 @@ export async function createCheckoutSession(priceId) {
   );
   return data;
 }
+
+export async function fetchSubscriptionPlans() {
+  const { data } = await axiosInstance.get("/billing/plans", {
+    meta: { fallbackMessage: "Failed to fetch plans" },
+  });
+  return data;
+}

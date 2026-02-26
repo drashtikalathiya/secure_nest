@@ -8,6 +8,7 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 import toast from "react-hot-toast";
 import { firebaseConfirmPasswordReset } from "../../services/firebaseAuth";
+import { validateResetPassword } from "../../utils/validators";
 
 export default function ResetPasswordForm() {
   const [password, setPassword] = useState("");
@@ -15,6 +16,7 @@ export default function ResetPasswordForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState({});
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const oobCode = useMemo(() => searchParams.get("oobCode") || "", [searchParams]);
@@ -32,12 +34,12 @@ export default function ResetPasswordForm() {
       toast.error("Reset link is missing or invalid. Please request a new one.");
       return;
     }
-    if (!password || !confirmPassword) {
-      toast.error("Please fill out both password fields.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match.");
+    const validationErrors = validateResetPassword({
+      password,
+      confirmPassword,
+    });
+    if (Object.keys(validationErrors).length) {
+      setError(validationErrors);
       return;
     }
 
@@ -95,7 +97,12 @@ export default function ResetPasswordForm() {
               value={password}
               autoComplete="new-password"
               placeholder="Enter secure password"
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                if (error.password) {
+                  setError((prev) => ({ ...prev, password: undefined }));
+                }
+              }}
               className="h-12 w-full rounded-xl border border-primary/30 bg-[#121a28] px-4 pr-10 text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary/60"
             />
             <button
@@ -106,6 +113,9 @@ export default function ResetPasswordForm() {
               {showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
             </button>
           </div>
+          {error.password && (
+            <p className="text-red-500 text-xs mt-1">{error.password}</p>
+          )}
         </div>
 
         <div>
@@ -118,7 +128,12 @@ export default function ResetPasswordForm() {
               value={confirmPassword}
               autoComplete="new-password"
               placeholder="Re-type your password"
-              onChange={(event) => setConfirmPassword(event.target.value)}
+              onChange={(event) => {
+                setConfirmPassword(event.target.value);
+                if (error.confirmPassword) {
+                  setError((prev) => ({ ...prev, confirmPassword: undefined }));
+                }
+              }}
               className="h-12 w-full rounded-xl border border-primary/30 bg-[#121a28] px-4 pr-10 text-sm text-white placeholder:text-slate-500 focus:ring-2 focus:ring-primary/60"
             />
             <button
@@ -129,6 +144,11 @@ export default function ResetPasswordForm() {
               {showConfirm ? <IconEyeOff size={18} /> : <IconEye size={18} />}
             </button>
           </div>
+          {error.confirmPassword && (
+            <p className="text-red-500 text-xs mt-1">
+              {error.confirmPassword}
+            </p>
+          )}
         </div>
 
         <button

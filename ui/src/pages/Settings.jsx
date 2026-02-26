@@ -16,10 +16,12 @@ import { useAuth } from "../context/AuthContext";
 import { useProfileSettings } from "../hooks/useProfileSettings";
 import { usePasswordSettings } from "../hooks/usePasswordSettings";
 import {
-  SUBSCRIPTION_PLANS,
-  normalizePlanId,
-} from "../constants/subscriptionPlans";
-import { createCheckoutSession } from "../services/billingApi";
+  createCheckoutSession,
+  fetchSubscriptionPlans,
+} from "../services/billingApi";
+
+const normalizePlanId = (planId) =>
+  String(planId || "").toLowerCase() === "family" ? "family" : "small";
 
 export default function Settings() {
   const { user, setUser, isSubscribed } = useAuth();
@@ -27,18 +29,38 @@ export default function Settings() {
   const password = usePasswordSettings();
   const [planLoadingId, setPlanLoadingId] = useState(null);
   const [selectedPlanId, setSelectedPlanId] = useState("small");
+  const [plans, setPlans] = useState([]);
+  const [plansLoading, setPlansLoading] = useState(true);
   const isOwner = user?.role === "owner";
   const activePlanId = normalizePlanId(user?.subscription_plan);
   const activePlan = useMemo(
-    () =>
-      SUBSCRIPTION_PLANS.find((plan) => plan.id === activePlanId) ||
-      SUBSCRIPTION_PLANS[0],
-    [activePlanId],
+    () => plans.find((plan) => plan.id === activePlanId) || plans[0] || null,
+    [activePlanId, plans],
   );
 
   useEffect(() => {
     setSelectedPlanId(activePlanId);
   }, [activePlanId]);
+
+  useEffect(() => {
+    let isActive = true;
+    const load = async () => {
+      try {
+        const { data } = await fetchSubscriptionPlans();
+        if (!isActive) return;
+        setPlans(Array.isArray(data) ? data : []);
+      } catch (error) {
+        toast.error(error?.message || "Failed to load plans.");
+        setPlans([]);
+      } finally {
+        if (isActive) setPlansLoading(false);
+      }
+    };
+    load();
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const handlePlanChange = async (plan) => {
     if (!isOwner) return;
@@ -50,6 +72,10 @@ export default function Settings() {
 
     try {
       setPlanLoadingId(plan.id);
+      if (!plan.price_id) {
+        toast.error("Plan is unavailable. Try again later.");
+        return;
+      }
       const { url } = await createCheckoutSession(plan.price_id);
       window.location.href = url;
     } catch (error) {
@@ -354,38 +380,49 @@ export default function Settings() {
           </div>
 
           {isOwner ? (
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              {SUBSCRIPTION_PLANS.map((plan) => {
-                const isActive = plan.id === activePlanId;
-                const loading = planLoadingId === plan.id;
+            plans.length ? (
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                {plans.map((plan) => {
+                  const isActive = plan.id === activePlanId;
+                  const loading = planLoadingId === plan.id;
+                  const planDisabled = plansLoading || !plan.price_id;
 
-                return (
-                  <PlanCard
-                    key={plan.id}
-                    plan={plan}
-                    selected={selectedPlanId === plan.id}
-                    onSelect={() => setSelectedPlanId(plan.id)}
-                    onSubscribe={() => handlePlanChange(plan)}
-                    showSelector
-                    showSubscribeButton
-                    subscribeLoading={loading}
-                    subscribeDisabled={isSubscribed && isActive}
-                    subscribeLabel={
-                      isSubscribed && isActive
-                        ? "Current Plan"
-                        : isSubscribed
-                          ? `Switch to ${plan.title}`
-                          : `Select ${plan.title}`
-                    }
-                  />
-                );
-              })}
-            </div>
+                  return (
+                    <PlanCard
+                      key={plan.id}
+                      plan={plan}
+                      selected={selectedPlanId === plan.id}
+                      onSelect={() => setSelectedPlanId(plan.id)}
+                      onSubscribe={() => handlePlanChange(plan)}
+                      showSelector
+                      showSubscribeButton
+                      subscribeLoading={loading}
+                      subscribeDisabled={
+                        (isSubscribed && isActive) || planDisabled
+                      }
+                      subscribeLabel={
+                        isSubscribed && isActive
+                          ? "Current Plan"
+                          : isSubscribed
+                            ? `Switch to ${plan.title}`
+                            : `Select ${plan.title}`
+                      }
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-4 rounded-xl border border-slate-800/80 bg-slate-900/40 p-4 text-sm text-slate-300">
+                {plansLoading
+                  ? "Loading plans..."
+                  : "No subscription plans available."}
+              </div>
+            )
           ) : (
             <div className="mt-4 rounded-xl border border-slate-800/80 bg-slate-900/40 p-4 text-sm text-slate-300">
               Active plan:{" "}
               <span className="font-semibold text-slate-100">
-                {activePlan.title}
+                {activePlan?.title || "Unavailable"}
               </span>
             </div>
           )}

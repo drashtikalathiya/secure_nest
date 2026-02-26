@@ -1,11 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { IconShieldCheck, IconClock } from "@tabler/icons-react";
 import PlanCard from "../components/PlanCard";
-import { createCheckoutSession } from "../services/billingApi";
-import { SUBSCRIPTION_PLANS } from "../constants/subscriptionPlans";
+import {
+  createCheckoutSession,
+  fetchSubscriptionPlans,
+} from "../services/billingApi";
+import toast from "react-hot-toast";
 
 const handleSubscribe = async (priceId) => {
   try {
+    if (!priceId) {
+      toast.error("Plan is unavailable. Try again later.");
+      return;
+    }
     const { url } = await createCheckoutSession(priceId);
 
     window.location.href = url;
@@ -16,6 +23,28 @@ const handleSubscribe = async (priceId) => {
 
 export default function Subscription() {
   const [selectedPlan, setSelectedPlan] = useState("family");
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isActive = true;
+    const load = async () => {
+      try {
+        const { data } = await fetchSubscriptionPlans();
+        if (!isActive) return;
+        setPlans(Array.isArray(data) ? data : []);
+      } catch (error) {
+        toast.error(error?.message || "Failed to load plans.");
+        setPlans([]);
+      } finally {
+        if (isActive) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0b1220] text-white px-6 py-12 flex flex-col justify-center">
@@ -26,17 +55,27 @@ export default function Subscription() {
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-        {SUBSCRIPTION_PLANS.map((plan) => (
-          <PlanCard
-            key={plan.id}
-            plan={plan}
-            selected={selectedPlan === plan.id}
-            onSelect={() => setSelectedPlan(plan.id)}
-            onSubscribe={handleSubscribe}
-          />
-        ))}
-      </div>
+      {plans.length ? (
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          {plans.map((plan) => (
+            <PlanCard
+              key={plan.id}
+              plan={plan}
+              selected={selectedPlan === plan.id}
+              onSelect={() => setSelectedPlan(plan.id)}
+              onSubscribe={handleSubscribe}
+              subscribeDisabled={loading || !plan.price_id}
+              subscribeLabel={
+                loading ? "Loading..." : "Select Plan for Your Nest"
+              }
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="mx-auto max-w-2xl text-center text-sm text-slate-300">
+          {loading ? "Loading plans..." : "No subscription plans available."}
+        </div>
+      )}
 
       <div className="flex justify-center gap-8 mt-14 text-gray-400 text-xs">
         <div className="flex items-center gap-2">

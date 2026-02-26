@@ -1,4 +1,9 @@
-import { IconCloudUpload, IconSearch, IconUpload } from "@tabler/icons-react";
+import {
+  IconCloudUpload,
+  IconSearch,
+  IconUpload,
+  IconChevronDown,
+} from "@tabler/icons-react";
 import toast from "react-hot-toast";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RightSlider from "../common/RightSlider";
@@ -230,7 +235,7 @@ export default function AddDocumentSlider({
           </div>
 
           <label className="space-y-1">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               Document Title
             </span>
             <input
@@ -243,39 +248,51 @@ export default function AddDocumentSlider({
           </label>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-1">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                 Category
-              </span>
-              <select
-                value={category}
-                onChange={(event) => setCategory(event.target.value)}
-                className="w-full rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-sky-500/70 focus:outline-none"
-              >
-                {DOCUMENT_CATEGORIES.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
+              </label>
+              <div className="relative mt-2">
+                <select
+                  value={category}
+                  onChange={(event) => setCategory(event.target.value)}
+                  className="w-full cursor-pointer appearance-none rounded-xl border border-slate-800/80 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-200 focus:border-sky-500/60 focus:outline-none"
+                >
+                  {DOCUMENT_CATEGORIES.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <IconChevronDown
+                  size={14}
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+                />
+              </div>
+            </div>
 
-            <label className="space-y-1">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                 Destination Folder
-              </span>
-              <select
-                value={activeFolderId}
-                onChange={(event) => setFolderId(event.target.value)}
-                className="w-full rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-sky-500/70 focus:outline-none"
-              >
-                {folderOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+              </label>
+              <div className="relative mt-2">
+                <select
+                  value={activeFolderId}
+                  onChange={(event) => setFolderId(event.target.value)}
+                  className="w-full cursor-pointer appearance-none rounded-xl border border-slate-800/80 bg-slate-900/70 px-4 py-2.5 text-sm text-slate-200 focus:border-sky-500/60 focus:outline-none"
+                >
+                  {folderOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.name}
+                    </option>
+                  ))}
+                </select>
+                <IconChevronDown
+                  size={14}
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500"
+                />
+              </div>
+            </div>
           </div>
 
           <VisibilityAccessSelector

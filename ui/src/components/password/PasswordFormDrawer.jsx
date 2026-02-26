@@ -52,7 +52,7 @@ export default function PasswordFormDrawer({
       >
         {/* <div className="grid gap-3 sm:grid-cols-2"> */}
         <div>
-          <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             Site Name
           </label>
           <input
@@ -65,7 +65,7 @@ export default function PasswordFormDrawer({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               Category
             </label>
             <div className="relative mt-2">
@@ -88,7 +88,7 @@ export default function PasswordFormDrawer({
           </div>
 
           <div>
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               Website URL
             </label>
             <div className="relative mt-2">
@@ -104,7 +104,7 @@ export default function PasswordFormDrawer({
         {/* </div> */}
 
         <div>
-          <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             Username / Email
           </label>
           <input
@@ -117,7 +117,7 @@ export default function PasswordFormDrawer({
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <label className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               Password
             </label>
           </div>
