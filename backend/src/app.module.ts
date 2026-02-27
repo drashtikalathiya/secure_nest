@@ -12,7 +12,6 @@ import { ContactsModule } from './contacts/contacts.module';
 import { PasswordsModule } from './passwords/passwords.module';
 import { DocumentsModule } from './documents/documents.module';
 import { DashboardModule } from './dashboard/dashboard.module';
-import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -33,7 +32,6 @@ import { MailModule } from './mail/mail.module';
     PasswordsModule,
     DocumentsModule,
     DashboardModule,
-    MailModule,
   ],
   controllers: [AppController],
   providers: [AppService],
