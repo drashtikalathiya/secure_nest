@@ -8,17 +8,21 @@ import {
 } from "../services/invitationsApi";
 import { auth } from "../services/firebase";
 import { setAuthToken } from "../services/apiClient";
+import Loader from "../components/common/Loader";
 
 export default function AcceptInvitation() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [message, setMessage] = useState("Validating invitation...");
+  const [loading, setLoading] = useState(true);
   const token = searchParams.get("token");
 
   useEffect(() => {
     const run = async () => {
+      setLoading(true);
       if (!token) {
         setMessage("Invalid invitation link.");
+        setLoading(false);
         return;
       }
 
@@ -28,6 +32,7 @@ export default function AcceptInvitation() {
 
         if (!invite?.valid) {
           setMessage("This invitation is no longer valid.");
+          setLoading(false);
           return;
         }
 
@@ -76,11 +81,16 @@ export default function AcceptInvitation() {
         navigate(next, { replace: true });
       } catch (error) {
         setMessage(error?.message || "Failed to process invitation.");
+        setLoading(false);
       }
     };
 
     run();
   }, [navigate, token]);
+
+  if (loading) {
+    return <Loader message="VALIDATING" />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background-dark px-6 text-white">

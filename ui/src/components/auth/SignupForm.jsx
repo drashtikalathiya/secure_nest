@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   IconCamera,
   IconPlus,
+  IconX,
   IconUser,
   IconMail,
   IconEye,
@@ -166,6 +167,17 @@ export default function SignupForm() {
     setProfilePreview(nextPreview);
   };
 
+  const handleProfileRemove = () => {
+    if (profilePreview) {
+      URL.revokeObjectURL(profilePreview);
+    }
+    setProfileImage(null);
+    setProfilePreview("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col items-center">
@@ -200,11 +212,15 @@ export default function SignupForm() {
             </button>
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={
+                profilePreview
+                  ? handleProfileRemove
+                  : () => fileInputRef.current?.click()
+              }
               className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/30 transition hover:bg-primary-strong"
               aria-label="Add profile photo"
             >
-              <IconPlus size={16} />
+              {profilePreview ? <IconX size={16} /> : <IconPlus size={16} />}
             </button>
             <input
               ref={fileInputRef}
