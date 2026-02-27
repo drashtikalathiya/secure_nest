@@ -10,28 +10,31 @@ export const escapeHtml = (value: string): string =>
     .replace(/'/g, '&#39;');
 
 export const getMailConfig = () => {
+  const host = process.env.MAIL_HOST;
+  const port = Number(process.env.MAIL_PORT || 587);
   const user = process.env.MAIL_USER;
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+  const pass = process.env.MAIL_PASS;
 
-  if (!user || !clientId || !clientSecret || !refreshToken) {
+  if (!host || !user || !pass) {
     throw new InternalServerErrorException(
       'Email service is not configured.',
     );
   }
 
+  const secure =
+    String(process.env.MAIL_SECURE || 'false').toLowerCase() === 'true';
   const appName = process.env.MAIL_FROM_NAME || 'SecureNest';
   const from = process.env.MAIL_FROM || user;
-  const supportEmail = process.env.SUPPORT_EMAIL || from;
+  const supportEmail = process.env.SUPPORT_EMAIL || from || user;
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const frontendDomain = new URL(frontendUrl).host;
 
   return {
+    host,
+    port,
     user,
-    clientId,
-    clientSecret,
-    refreshToken,
+    pass,
+    secure,
     appName,
     from,
     supportEmail,
@@ -41,18 +44,15 @@ export const getMailConfig = () => {
 };
 
 export const createTransporter = (config: {
+  host: string;
+  port: number;
+  secure: boolean;
   user: string;
-  clientId: string;
-  clientSecret: string;
-  refreshToken: string;
+  pass: string;
 }) =>
   nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      type: 'OAuth2',
-      user: config.user,
-      clientId: config.clientId,
-      clientSecret: config.clientSecret,
-      refreshToken: config.refreshToken,
-    },
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: { user: config.user, pass: config.pass },
   });
