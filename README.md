@@ -77,13 +77,12 @@ FIREBASE_PROJECT_ID=...
 FIREBASE_CLIENT_EMAIL=...
 FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 
-# Email (SMTP)
-MAIL_HOST=smtp.example.com
-MAIL_PORT=587
-MAIL_SECURE=false
-MAIL_USER=your_smtp_username
-MAIL_PASS=your_smtp_password
-MAIL_FROM=no-reply@securenest.app
+# Email (Gmail OAuth2)
+MAIL_USER=your_gmail_address
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_REFRESH_TOKEN=your-google-refresh-token
+MAIL_FROM=your_gmail_address
 MAIL_FROM_NAME=SecureNest
 SUPPORT_EMAIL=support@securenest.app
 
