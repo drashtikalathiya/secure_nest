@@ -6,7 +6,10 @@ import * as express from 'express';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use('/billing/webhook', express.raw({ type: 'application/json' }));
-  app.enableCors();
+  app.enableCors({
+    origin: [process.env.FRONTEND_URL],
+    credentials: true,
+  });
   await app.listen(process.env.PORT ?? 3001);
 }
 bootstrap();
