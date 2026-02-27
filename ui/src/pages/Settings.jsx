@@ -123,7 +123,11 @@ export default function Settings() {
                       className="inline-flex items-center gap-2 rounded-lg bg-primary-strong px-4 py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <IconCamera size={13} />
-                      {profile.uploadingPhoto ? "Uploading..." : "Upload New"}
+                      {profile.uploadingPhoto
+                        ? "Uploading..."
+                        : profile.pendingPhotoFile
+                          ? "Selected"
+                          : "Upload New"}
                     </button>
                     <button
                       type="button"
@@ -131,7 +135,8 @@ export default function Settings() {
                       disabled={
                         profile.loading ||
                         profile.uploadingPhoto ||
-                        !profile.profileForm.profilePhotoUrl
+                        (!profile.profileForm.profilePhotoUrl &&
+                          !profile.pendingPhotoFile)
                       }
                       className="rounded-lg border border-slate-700 bg-slate-800/70 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                     >

@@ -23,12 +23,21 @@ export function useProfileSettings(user, setUser) {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [pendingPhotoFile, setPendingPhotoFile] = useState(null);
+  const [pendingPhotoPreview, setPendingPhotoPreview] = useState("");
+  const [removePhotoRequested, setRemovePhotoRequested] = useState(false);
 
   const resetForm = () => {
+    if (pendingPhotoPreview) {
+      URL.revokeObjectURL(pendingPhotoPreview);
+    }
     setProfileForm({
       name: user?.name || "",
       profilePhotoUrl: user?.profile_photo_url || "",
     });
+    setPendingPhotoFile(null);
+    setPendingPhotoPreview("");
+    setRemovePhotoRequested(false);
   };
 
   useEffect(() => {
@@ -64,8 +73,12 @@ export function useProfileSettings(user, setUser) {
   }, [members, membersLoading, refreshMembers, user?.email]);
 
   const profileImage = useMemo(
-    () => profileForm.profilePhotoUrl || user?.profile_photo_url || "",
-    [profileForm.profilePhotoUrl, user?.profile_photo_url],
+    () =>
+      pendingPhotoPreview ||
+      profileForm.profilePhotoUrl ||
+      user?.profile_photo_url ||
+      "",
+    [pendingPhotoPreview, profileForm.profilePhotoUrl, user?.profile_photo_url],
   );
 
   const handlePhotoUpload = async (file) => {
@@ -81,69 +94,36 @@ export function useProfileSettings(user, setUser) {
       return;
     }
 
-    try {
-      setUploadingPhoto(true);
-
-      const res = await uploadMyProfilePhoto(file);
-      const nextPhotoUrl = res?.data?.profile_photo_url || "";
-
-      setProfileForm((prev) => ({
-        ...prev,
-        profilePhotoUrl: nextPhotoUrl,
-      }));
-
-      await updateFirebaseUserProfile(auth.currentUser, {
-        photoURL: nextPhotoUrl || null,
-      });
-
-      setUser((prev) => ({
-        ...prev,
-        profile_photo_url: nextPhotoUrl,
-      }));
-
-      toast.success("Profile photo updated.");
-    } catch (error) {
-      toast.error(error?.message || "Upload failed.");
-    } finally {
-      setUploadingPhoto(false);
+    if (pendingPhotoPreview) {
+      URL.revokeObjectURL(pendingPhotoPreview);
     }
+
+    const nextPreview = URL.createObjectURL(file);
+    setPendingPhotoFile(file);
+    setPendingPhotoPreview(nextPreview);
+    setRemovePhotoRequested(false);
   };
 
   const removePhoto = async () => {
     const previousPhotoUrl = profileForm.profilePhotoUrl || "";
 
-    if (!previousPhotoUrl) return;
+    if (pendingPhotoPreview) {
+      URL.revokeObjectURL(pendingPhotoPreview);
+    }
 
+    setPendingPhotoFile(null);
+    setPendingPhotoPreview("");
+    setRemovePhotoRequested(true);
     setProfileForm((prev) => ({
       ...prev,
       profilePhotoUrl: "",
     }));
 
-    try {
-      await removeMyProfilePhoto();
-
-      await updateFirebaseUserProfile(auth.currentUser, {
-        photoURL: null,
-      });
-
-      setUser((prev) => ({
-        ...prev,
-        profile_photo_url: "",
-      }));
-
-      toast.success("Profile photo removed.");
-    } catch (error) {
-      setProfileForm((prev) => ({
-        ...prev,
-        profilePhotoUrl: previousPhotoUrl,
-      }));
-      toast.error(error?.message || "Failed to remove photo.");
-    }
+    if (!previousPhotoUrl) return;
   };
 
   const saveProfile = async () => {
     const trimmedName = profileForm.name.trim();
-    const trimmedPhoto = profileForm.profilePhotoUrl.trim();
 
     if (!trimmedName) {
       toast.error("Name is required.");
@@ -153,27 +133,46 @@ export function useProfileSettings(user, setUser) {
     try {
       setLoading(true);
 
+      let nextPhotoUrl = profileForm.profilePhotoUrl.trim();
+
+      if (pendingPhotoFile) {
+        setUploadingPhoto(true);
+        const res = await uploadMyProfilePhoto(pendingPhotoFile);
+        nextPhotoUrl = res?.data?.profile_photo_url || "";
+      } else if (removePhotoRequested) {
+        await removeMyProfilePhoto();
+        nextPhotoUrl = "";
+      }
+
       await updateMyProfile({
         name: trimmedName,
-        profilePhotoUrl: trimmedPhoto || null,
+        profilePhotoUrl: nextPhotoUrl || null,
       });
 
       await updateFirebaseUserProfile(auth.currentUser, {
         displayName: trimmedName,
-        photoURL: trimmedPhoto || null,
+        photoURL: nextPhotoUrl || null,
       });
 
       setUser((prev) => ({
         ...prev,
         name: trimmedName,
-        profile_photo_url: trimmedPhoto || "",
+        profile_photo_url: nextPhotoUrl || "",
       }));
+
+      if (pendingPhotoPreview) {
+        URL.revokeObjectURL(pendingPhotoPreview);
+      }
+      setPendingPhotoFile(null);
+      setPendingPhotoPreview("");
+      setRemovePhotoRequested(false);
 
       toast.success("Profile updated.");
       setIsEditing(false);
     } catch (error) {
       toast.error(error?.message || "Update failed.");
     } finally {
+      setUploadingPhoto(false);
       setLoading(false);
     }
   };
@@ -187,6 +186,9 @@ export function useProfileSettings(user, setUser) {
     setIsEditing,
     loading,
     uploadingPhoto,
+    pendingPhotoFile,
+    pendingPhotoPreview,
+    removePhotoRequested,
     fileInputRef,
     resetForm,
     saveProfile,
