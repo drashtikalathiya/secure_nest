@@ -7,6 +7,7 @@ import {
   updatePassword,
   updateProfile,
   confirmPasswordReset,
+  deleteUser,
 } from "firebase/auth";
 import { auth } from "./firebase";
 
@@ -42,4 +43,9 @@ export const changeFirebasePassword = async (currentPassword, newPassword) => {
 
 export const firebaseConfirmPasswordReset = async (oobCode, newPassword) => {
   await confirmPasswordReset(auth, oobCode, newPassword);
+};
+
+export const deleteFirebaseUser = async (user) => {
+  if (!user) return;
+  await deleteUser(user);
 };

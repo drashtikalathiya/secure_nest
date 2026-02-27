@@ -12,6 +12,7 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   firebaseSignup,
+  deleteFirebaseUser,
   updateFirebaseUserProfile,
 } from "../../services/firebaseAuth";
 import {
@@ -89,13 +90,14 @@ export default function SignupForm() {
       return;
     }
 
+    let firebaseUser = null;
     try {
       setLoading(true);
       setError({});
       sessionStorage.setItem(SIGNUP_IN_PROGRESS_KEY, "1");
       let uploadedPhotoUrl = "";
 
-      const firebaseUser = await firebaseSignup(email, password);
+      firebaseUser = await firebaseSignup(email, password);
       const idToken = await firebaseUser.getIdToken();
       setAuthToken(idToken);
 
@@ -132,6 +134,14 @@ export default function SignupForm() {
     } catch (err) {
       console.error("Signup error:", err);
       sessionStorage.removeItem(SIGNUP_IN_PROGRESS_KEY);
+
+      if (firebaseUser) {
+        try {
+          await deleteFirebaseUser(firebaseUser);
+        } catch (cleanupError) {
+          console.error("Failed to rollback Firebase user:", cleanupError);
+        }
+      }
 
       if (err?.code === "auth/email-already-in-use") {
         toast.error("Email already exists. Please try another email.");
