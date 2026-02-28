@@ -62,7 +62,11 @@ export class BillingController {
   }
 
   @Post('webhook')
-  handleWebhook(@Req() req, @Headers('stripe-signature') signature: string) {
-    return this.billingService.handleWebhook(req.body, signature);
+  handleWebhook(
+    @Req() req,
+    @Headers('stripe-signature') signature: string,
+    @Headers('content-type') contentType: string,
+  ) {
+    return this.billingService.handleWebhook(req.body, signature, contentType);
   }
 }

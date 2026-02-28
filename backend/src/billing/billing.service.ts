@@ -135,11 +135,26 @@ export class BillingService {
     );
   }
 
-  async handleWebhook(rawBody: Buffer, signature: string | string[]) {
+  async handleWebhook(
+    rawBody: Buffer,
+    signature: string | string[],
+    contentType?: string,
+  ) {
     const sig = Array.isArray(signature) ? signature[0] : signature;
     let event: Stripe.Event;
 
     try {
+      console.log('Stripe webhook debug', {
+        hasSignature: Boolean(sig),
+        signatureType: typeof sig,
+        bodyType: typeof rawBody,
+        isBuffer: Buffer.isBuffer(rawBody),
+        bodyLength:
+          Buffer.isBuffer(rawBody) || typeof rawBody === 'string'
+            ? rawBody.length
+            : null,
+        contentType,
+      });
       event = this.stripe.webhooks.constructEvent(
         rawBody,
         sig,
