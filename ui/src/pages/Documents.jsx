@@ -551,7 +551,7 @@ export default function Documents() {
       <section className="pb-6">
         <div className="mt-6">
           <div className="">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <button
                 type="button"
                 onClick={() => setSelectedFolderId(null)}
@@ -560,7 +560,7 @@ export default function Documents() {
                 <IconArrowLeft size={20} />
                 Back to Folders
               </button>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2 justify-between">
                 <div className="flex items-center rounded-xl border border-slate-800/80 bg-slate-900/60 p-1">
                   <button
                     type="button"
