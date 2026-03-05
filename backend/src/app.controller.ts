@@ -7,4 +7,13 @@ export class AppController {
   getHello(): string {
     return 'Hello World!';
   }
+
+  @Get('health')
+  getHealth() {
+    return {
+      ok: true,
+      service: 'secure-nest-backend',
+      timestamp: new Date().toISOString(),
+    };
+  }
 }
